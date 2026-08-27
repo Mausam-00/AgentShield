@@ -1,0 +1,81 @@
+name: Deploy to Azure Container Apps
+
+# Builds the repo-root Dockerfile in the cloud (Azure Container Registry) and
+# deploys it to Azure Container Apps. No local Docker and no Azure CLI on your
+# machine are required — GitHub runs everything.
+#
+# This workflow is MANUAL (workflow_dispatch) so it never fails on ordinary
+# pushes before the Azure secrets exist. Flip `push` on below once secrets are
+# set if you want automatic deploys on every merge to main.
+#
+# Required repo secrets (Settings > Secrets and variables > Actions):
+#   AZURE_CLIENT_ID        - app registration (service principal) client ID
+#   AZURE_TENANT_ID        - your Azure AD / personal tenant ID
+#   AZURE_SUBSCRIPTION_ID  - target subscription ID
+# These use OIDC federated credentials (no client secret/password stored).
+# The Azure Portal's "Continuous deployment" wizard can create all three for
+# you automatically; see deploy/AZURE-PORTAL.md for the manual route too.
+
+on:
+  workflow_dispatch:
+    inputs:
+      resourceGroup:
+        description: "Resource group name"
+        default: "rg-agentshield"
+        required: true
+      location:
+        description: "Azure region"
+        default: "eastus"
+        required: true
+      appName:
+        description: "Container App name"
+        default: "agentshield"
+        required: true
+      environmentName:
+        description: "Container Apps environment name"
+        default: "agentshield-env"
+        required: true
+  # push:
+  #   branches: [ main ]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and deploy to Container Apps
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}
+          dockerfilePath: Dockerfile
+          resourceGroup: ${{ github.event.inputs.resourceGroup }}
+          containerAppEnvironment: ${{ github.event.inputs.environmentName }}
+          containerAppName: ${{ github.event.inputs.appName }}
+          location: ${{ github.event.inputs.location }}
+          targetPort: 3000
+          ingress: external
+          environmentVariables: >-
+            AGENTSHIELD_PYTHON=python3
+            NODE_ENV=production
+
+      - name: Show app URL
+        run: |
+          fqdn=$(az containerapp show \
+            --name "${{ github.event.inputs.appName }}" \
+            --resource-group "${{ github.event.inputs.resourceGroup }}" \
+            --query properties.configuration.ingress.fqdn -o tsv)
+          echo "AgentShield is live at: https://$fqdn"
+          echo "### AgentShield is live at https://$fqdn" >> "$GITHUB_STEP_SUMMARY"
