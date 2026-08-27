@@ -28,7 +28,21 @@ docker run -p 3000:3000 agentshield
 
 Deploy that image to any container host:
 
-- **Azure Container Apps** — `az containerapp up --source . --ingress external --target-port 3000`
+- **Azure Container Apps (one command)** — from the repo root:
+
+  ```powershell
+  ./deploy/azure-containerapp.ps1          # Windows / PowerShell
+  ```
+  ```bash
+  ./deploy/azure-containerapp.sh           # Linux / macOS / Cloud Shell
+  ```
+
+  This wraps `az containerapp up`, which **cloud-builds** the `Dockerfile` with
+  ACR (no local Docker needed), provisions the resource group + environment, and
+  deploys with external ingress on port 3000. Override defaults via parameters
+  or env vars, e.g. `./deploy/azure-containerapp.ps1 -ResourceGroup rg-agentshield -Location eastus -AppName agentshield`.
+  Re-run the script to redeploy. It prints the public `https://…` URL at the end.
+
 - **Azure App Service (Linux container)**, **Render**, **Railway**, **Fly.io** — point them at this repo/Dockerfile; expose port `3000`.
 
 No extra env vars are required (the image sets `AGENTSHIELD_PYTHON=python3`).
