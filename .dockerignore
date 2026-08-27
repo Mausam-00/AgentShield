@@ -1,0 +1,11 @@
+# Keep the build context small and reproducible.
+**/node_modules
+**/.next
+**/__pycache__
+**/*.pyc
+.git
+.venv
+venv
+docs/*.html
+generated-reports
+*.local.json
