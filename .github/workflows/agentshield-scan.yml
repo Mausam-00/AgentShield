@@ -1,0 +1,48 @@
+name: AgentShield Agent Scan
+
+# Prototype CI gate: assess every custom-agent definition and upload SARIF so
+# findings appear in the GitHub Security tab. The job fails if any agent reaches
+# a BLOCK assurance posture. No secrets or network access are required.
+
+on:
+  pull_request:
+    paths:
+      - "**/*.agent.md"
+      - ".github/agents/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  agentshield-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Scan agent definitions
+        run: |
+          set -e
+          shopt -s globstar nullglob
+          status=0
+          mkdir -p sarif-out
+          for f in **/*.agent.md; do
+            echo "::group::AgentShield scan $f"
+            out="sarif-out/$(echo "$f" | tr '/\\' '__').sarif"
+            python scripts/agentshield_scan.py "$f" --sarif "$out" --fail-on BLOCK || status=1
+            echo "::endgroup::"
+          done
+          exit $status
+
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: sarif-out
