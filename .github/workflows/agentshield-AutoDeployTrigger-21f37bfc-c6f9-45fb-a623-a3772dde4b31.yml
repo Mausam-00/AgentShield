@@ -34,16 +34,15 @@ jobs:
       - name: Build and push container image to registry
         uses: azure/container-apps-deploy-action@v2
         with:
-          appSourcePath: ${{ github.workspace }}Dockerfile
-          _dockerfilePathKey_: _dockerfilePath_
-          _targetLabelKey_: _targetLabel_
+          appSourcePath: ${{ github.workspace }}
+          dockerfilePath: Dockerfile
           registryUrl: agentshieldpacr2026.azurecr.io
           registryUsername: ${{ secrets.AGENTSHIELD_REGISTRY_USERNAME }}
           registryPassword: ${{ secrets.AGENTSHIELD_REGISTRY_PASSWORD }}
           containerAppName: agentshield
           resourceGroup: rg-agentshield
           imageToBuild: agentshieldpacr2026.azurecr.io/agentshield:${{ github.sha }}
-          _buildArgumentsKey_: |
-            _buildArgumentsValues_
+          targetPort: 3000
+          ingress: external
 
 
