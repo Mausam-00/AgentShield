@@ -31,11 +31,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
 SKILL_SCRIPTS = ROOT / ".github" / "skills" / "agentshield-html-report" / "scripts"
 if str(SKILL_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SKILL_SCRIPTS))
 
 import dashboard_report  # noqa: E402
+import agent_llm  # noqa: E402
 
 from agentshield import (  # noqa: E402
     ActionRequest,
@@ -155,6 +159,16 @@ def build_report(agent_path: str) -> dict:
         assessment.subject, assessment.definition_text
     )
     report["subject"]["name"] = assessment.subject
+
+    # Optional: let the AgentShield agent (Azure OpenAI) author the analysis,
+    # overlaying its findings onto this validated deterministic skeleton. Any
+    # failure falls back to the deterministic report so the site never breaks.
+    if agent_llm.llm_available():
+        try:
+            report = agent_llm.build_llm_report(assessment.definition_text, report)
+        except Exception as exc:  # noqa: BLE001 - deterministic fallback
+            print(f"agentshield: LLM enrichment skipped ({exc})", file=sys.stderr)
+
     return report
 
 
