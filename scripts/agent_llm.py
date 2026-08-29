@@ -1,8 +1,8 @@
 """Optional LLM-agent enrichment for the AgentShield web report.
 
-When Azure OpenAI credentials are present in the environment, this module lets
-the AgentShield agent itself (its published persona/definition, used verbatim as
-the system prompt) analyze an uploaded agent definition and produce the
+When LLM credentials are present in the environment, this module lets the
+AgentShield agent itself (its published persona/definition, used verbatim as the
+system prompt) analyze an uploaded agent definition and produce the
 human-readable analysis that drives the report. The deterministic engine still
 supplies a valid, safe skeleton; the model only *fills in* narrative and graded
 fields, which are then validated, clamped to known enums, and rendered through
@@ -12,13 +12,22 @@ If the credentials are absent, or the call fails for any reason, callers fall
 back to the deterministic report -- the website never breaks because the model
 is unavailable.
 
-Environment contract (all read at call time):
-    AZURE_OPENAI_ENDPOINT      e.g. https://my-aoai.openai.azure.com/
-    AZURE_OPENAI_DEPLOYMENT    chat-model deployment name, e.g. gpt-4o
-    AZURE_OPENAI_API_KEY       resource key (kept as a Container App secret)
-    AZURE_OPENAI_API_VERSION   optional; defaults to 2024-10-21
+Two interchangeable backends are supported (checked in this order):
 
-No third-party dependencies: the Azure OpenAI REST API is called with urllib.
+1. GitHub Models (free, OpenAI-compatible). Preferred when set:
+       GITHUB_MODELS_TOKEN     a GitHub PAT (kept as a Container App secret).
+                               GITHUB_TOKEN is also accepted as a fallback.
+       GITHUB_MODELS_MODEL     optional; defaults to openai/gpt-4o-mini
+       GITHUB_MODELS_ENDPOINT  optional; defaults to
+                               https://models.github.ai/inference
+
+2. Azure OpenAI:
+       AZURE_OPENAI_ENDPOINT      e.g. https://my-aoai.openai.azure.com/
+       AZURE_OPENAI_DEPLOYMENT    chat-model deployment name, e.g. gpt-4o
+       AZURE_OPENAI_API_KEY       resource key (kept as a Container App secret)
+       AZURE_OPENAI_API_VERSION   optional; defaults to 2024-10-21
+
+No third-party dependencies: both REST APIs are called with urllib.
 """
 
 from __future__ import annotations
@@ -35,6 +44,8 @@ ROOT = Path(__file__).resolve().parents[1]
 AGENT_PERSONA = ROOT / ".github" / "agents" / "agentshield.agent.md"
 
 DEFAULT_API_VERSION = "2024-10-21"
+DEFAULT_GH_ENDPOINT = "https://models.github.ai/inference"
+DEFAULT_GH_MODEL = "openai/gpt-4o-mini"
 REQUEST_TIMEOUT_S = 60
 
 POSTURES = ("PASS", "WARN", "BLOCK")
@@ -103,12 +114,30 @@ Output the JSON object now.
 """
 
 
-def llm_available() -> bool:
+def _github_token() -> str | None:
+    return os.environ.get("GITHUB_MODELS_TOKEN") or os.environ.get("GITHUB_TOKEN")
+
+
+def _azure_configured() -> bool:
     return bool(
         os.environ.get("AZURE_OPENAI_ENDPOINT")
         and os.environ.get("AZURE_OPENAI_DEPLOYMENT")
         and os.environ.get("AZURE_OPENAI_API_KEY")
     )
+
+
+def active_provider() -> str | None:
+    """Which backend will be used, if any. GitHub Models takes precedence."""
+
+    if _github_token():
+        return "github"
+    if _azure_configured():
+        return "azure"
+    return None
+
+
+def llm_available() -> bool:
+    return active_provider() is not None
 
 
 def _system_prompt() -> str:
@@ -125,6 +154,37 @@ def _system_prompt() -> str:
             "posture without executing them."
         )
     return persona.strip() + "\n\n" + OUTPUT_CONTRACT
+
+
+def _post_json(url: str, headers: dict, payload: dict) -> dict:
+    data = json.dumps(payload).encode("utf-8")
+    request = urllib.request.Request(
+        url, data=data, headers={**headers, "Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT_S) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def _call_github_models(system: str, user: str) -> str:
+    token = _github_token()
+    if not token:
+        raise RuntimeError("no GitHub Models token")
+    endpoint = os.environ.get("GITHUB_MODELS_ENDPOINT", DEFAULT_GH_ENDPOINT).rstrip("/")
+    model = os.environ.get("GITHUB_MODELS_MODEL", DEFAULT_GH_MODEL)
+    url = f"{endpoint}/chat/completions"
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        "temperature": 0.2,
+        "max_tokens": 4000,
+        "response_format": {"type": "json_object"},
+    }
+    body = _post_json(url, {"Authorization": f"Bearer {token}"}, payload)
+    return body["choices"][0]["message"]["content"]
 
 
 def _call_azure_openai(system: str, user: str) -> str:
@@ -146,16 +206,17 @@ def _call_azure_openai(system: str, user: str) -> str:
         "max_tokens": 4000,
         "response_format": {"type": "json_object"},
     }
-    data = json.dumps(payload).encode("utf-8")
-    request = urllib.request.Request(
-        url,
-        data=data,
-        headers={"api-key": api_key, "Content-Type": "application/json"},
-        method="POST",
-    )
-    with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT_S) as response:
-        body = json.loads(response.read().decode("utf-8"))
+    body = _post_json(url, {"api-key": api_key}, payload)
     return body["choices"][0]["message"]["content"]
+
+
+def _call_llm(system: str, user: str) -> str:
+    provider = active_provider()
+    if provider == "github":
+        return _call_github_models(system, user)
+    if provider == "azure":
+        return _call_azure_openai(system, user)
+    raise RuntimeError("no LLM provider configured")
 
 
 def _extract_json(text: str) -> dict:
@@ -354,7 +415,7 @@ def build_llm_report(definition_text: str, base_report: dict) -> dict:
         f"{definition_text}\n"
         "=== AGENT DEFINITION END ==="
     )
-    content = _call_azure_openai(system, user)
+    content = _call_llm(system, user)
     patch = _extract_json(content)
     if not isinstance(patch, dict):
         raise ValueError("model did not return a JSON object")
