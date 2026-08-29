@@ -126,6 +126,25 @@ class EscapingTests(unittest.TestCase):
         for token in ("<script", "http://", "https://", "javascript:", "<iframe"):
             self.assertNotIn(token, lowered)
 
+    def test_urls_in_evidence_are_defanged_not_crashing(self):
+        # A benign URL inside caller-supplied evidence (e.g. a finding quoting an
+        # endpoint from the agent definition) must render inertly, not trip the
+        # self-contained guard. Regression for the /api/assess 500 on uploads
+        # whose definition referenced https:// endpoints.
+        data = _base_report(
+            observations=[
+                "External URL(s): https://api.acme-corp.io/v1/execute, "
+                "http://telemetry.acme-corp.io/ingest"
+            ]
+        )
+        doc = GEN.build_html(data)  # must not raise ReportError
+        lowered = doc.lower()
+        for token in ("http://", "https://", "//fonts.", "javascript:"):
+            self.assertNotIn(token, lowered)
+        # The information is preserved, just defanged and inert.
+        self.assertIn("https[://]api.acme-corp.io/v1/execute", doc)
+        self.assertIn("http[://]telemetry.acme-corp.io/ingest", doc)
+
     def test_unsafe_output_fails_closed(self):
         # Inject an unsafe token that survives escaping only if a bug exists;
         # here we call the guard directly to prove it raises.

@@ -110,18 +110,36 @@ def redact(value: Any, key_hint: str = "") -> Any:
 # --------------------------------------------------------------------------- #
 # Escaping helpers
 # --------------------------------------------------------------------------- #
+# Neutralize ("defang") constructs the self-contained guard forbids so benign
+# occurrences inside caller-supplied evidence (e.g. a documentation URL) render
+# inertly instead of crashing. html.escape() already disarms "<script"/"<iframe"
+# by escaping "<"; these patterns cover tokens that survive HTML escaping.
+_DEFANG_PATTERNS = (
+    (re.compile(r"(https?)://", re.IGNORECASE), r"\1[://]"),
+    (re.compile(r"//(fonts\.)", re.IGNORECASE), r"[//]\1"),
+    (re.compile(r"(javascript):", re.IGNORECASE), r"\1[:]"),
+    (re.compile(r"(onerror|onload|srcset)=", re.IGNORECASE), r"\1[=]"),
+)
+
+
+def _defang(text: str) -> str:
+    for pattern, replacement in _DEFANG_PATTERNS:
+        text = pattern.sub(replacement, text)
+    return text
+
+
 def esc(value: Any) -> str:
     """HTML-escape any value (including quotes). Missing -> No evidence."""
 
     if value is None or value == "":
         return html.escape(NO_EVIDENCE, quote=True)
-    return html.escape(str(value), quote=True)
+    return _defang(html.escape(str(value), quote=True))
 
 
 def esc_raw(value: Any) -> str:
     """Escape without the No-evidence substitution (for known-present values)."""
 
-    return html.escape(str(value), quote=True)
+    return _defang(html.escape(str(value), quote=True))
 
 
 # --------------------------------------------------------------------------- #

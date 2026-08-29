@@ -92,14 +92,33 @@ def redact(value: Any, key_hint: str = "") -> Any:
     return value
 
 
+# Neutralize ("defang") constructs that the self-contained guard forbids so that
+# benign occurrences inside an uploaded agent definition (e.g. a documentation
+# URL) are shown inertly instead of crashing rendering. html.escape() already
+# disarms "<script"/"<iframe" by escaping "<"; these patterns cover the tokens
+# that survive HTML escaping. The result contains no live/clickable reference.
+_DEFANG_PATTERNS = (
+    (re.compile(r"(https?)://", re.IGNORECASE), r"\1[://]"),
+    (re.compile(r"//(fonts\.)", re.IGNORECASE), r"[//]\1"),
+    (re.compile(r"(javascript):", re.IGNORECASE), r"\1[:]"),
+    (re.compile(r"(onerror|onload|srcset)=", re.IGNORECASE), r"\1[=]"),
+)
+
+
+def _defang(text: str) -> str:
+    for pattern, replacement in _DEFANG_PATTERNS:
+        text = pattern.sub(replacement, text)
+    return text
+
+
 def esc(value: Any) -> str:
     if value is None or value == "":
         return html.escape(NO_EVIDENCE, quote=True)
-    return html.escape(str(value), quote=True)
+    return _defang(html.escape(str(value), quote=True))
 
 
 def esc_raw(value: Any) -> str:
-    return html.escape(str(value), quote=True)
+    return _defang(html.escape(str(value), quote=True))
 
 
 def sev_class(sev: Any) -> str:
