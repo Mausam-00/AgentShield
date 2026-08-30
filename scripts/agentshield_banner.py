@@ -26,6 +26,7 @@ Usage:
 from __future__ import annotations
 
 import os
+import re
 import sys
 
 # Ensure the block-drawing glyphs and ANSI colour survive on legacy Windows
@@ -62,6 +63,9 @@ RED = (239, 68, 68)
 # PowerShell security-warning yellow (the "run only scripts you trust" prompt).
 PSYELLOW = (240, 210, 60)
 PSGOLD = (196, 156, 0)
+
+# PowerShell classic navy background (#012456) - fills the banner panel.
+NAVY = (1, 36, 86)
 
 # VS Code "Dark+" syntax palette - one hue per menu option for a rainbow,
 # code-editor look on the 1-8 intake badges.
@@ -113,7 +117,29 @@ class Painter:
             return text
         r, g, b = rgb
         b0 = "1;" if bold else ""
-        return f"\x1b[{b0}38;2;{r};{g};{b}m{text}\x1b[0m"
+        # Reset only foreground + intensity (39;22), never the background, so a
+        # line-level background fill set by _bg_fill() survives across segments.
+        return f"\x1b[{b0}38;2;{r};{g};{b}m{text}\x1b[39;22m"
+
+
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _visible_len(text: str) -> int:
+    return len(_ANSI_RE.sub("", text))
+
+
+def _bg_fill(lines: list[str], width: int, rgb: tuple[int, int, int]) -> list[str]:
+    """Wrap every line in a solid background to full width so the banner reads
+    as one navy panel (matching the rendered PNG), then reset at line end."""
+    r, g, b = rgb
+    open_bg = f"\x1b[48;2;{r};{g};{b}m"
+    reset = "\x1b[0m"
+    filled = []
+    for ln in lines:
+        pad = max(0, width - _visible_len(ln))
+        filled.append(open_bg + ln + " " * pad + reset)
+    return filled
 
 
 def centre(text: str, width: int = WIDTH) -> str:
@@ -216,6 +242,8 @@ def render(width: int, plain: bool) -> str:
     out.append("")
     out.append("  " + paint.fg("Reply 1-8, or just describe your goal.", CYAN))
     out.append("")
+    if paint.enabled:
+        out = _bg_fill(out, width, NAVY)
     return "\n".join(out)
 
 
