@@ -23,7 +23,8 @@ RUN npm run build
 # ---- Stage 2: runtime (Node server + Python 3 engine) ----
 FROM node:20-bookworm-slim AS runtime
 RUN apt-get update \
- && apt-get install -y --no-install-recommends python3 \
+ && apt-get install -y --no-install-recommends python3 ca-certificates \
+ && update-ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
