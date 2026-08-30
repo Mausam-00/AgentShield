@@ -184,8 +184,16 @@ def _post_json(url: str, headers: dict, payload: dict) -> dict:
         url, data=data, headers={**headers, "Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT_S) as response:
-        return json.loads(response.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT_S) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        body = ""
+        try:
+            body = exc.read().decode("utf-8", errors="replace")[:500]
+        except Exception:  # noqa: BLE001
+            pass
+        raise RuntimeError(f"HTTP {exc.code} from {url}: {body}") from exc
 
 
 def _call_azure_ai(system: str, user: str) -> str:

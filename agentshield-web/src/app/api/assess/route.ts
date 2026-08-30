@@ -40,6 +40,9 @@ function runEngine(mdPath: string, outPath: string): Promise<{ stdout: string; s
     child.stderr.on("data", (d) => (stderr += d.toString()));
     child.on("error", (err) => reject(err));
     child.on("close", (code) => {
+      // Surface engine diagnostics (e.g. LLM enrichment skip reasons) to the
+      // server logs; they are otherwise swallowed on a successful run.
+      if (stderr.trim()) console.error(`[agentshield-engine] ${stderr.trim()}`);
       if (code === 0) resolve({ stdout, stderr });
       else reject(new Error(`engine exited with code ${code}: ${stderr || stdout}`));
     });
