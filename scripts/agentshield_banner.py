@@ -35,6 +35,19 @@ try:
 except (AttributeError, ValueError):
     pass
 
+# On Windows, turn on ANSI escape interpretation (ENABLE_VIRTUAL_TERMINAL_
+# PROCESSING) so the classic console / conhost renders the colour codes instead
+# of printing them literally. Modern terminals already do this; the call is a
+# harmless no-op there. Failure degrades gracefully to plain text.
+if os.name == "nt":
+    try:
+        import ctypes
+
+        _k32 = ctypes.windll.kernel32
+        _k32.SetConsoleMode(_k32.GetStdHandle(-11), 7)
+    except Exception:
+        pass
+
 WIDTH = 88
 
 # Filled block wordmark (figlet "ANSI Shadow"), 6 rows, 87 cols wide.
@@ -85,17 +98,17 @@ ROW_COLORS = ["92", "92", "92", "92", "92", "92"]
 
 
 def supports_color(force_plain: bool) -> bool:
+    # Colour is ON by default. AgentShield's banner almost always runs with its
+    # stdout piped (the Copilot CLI shell escape and agent tool calls both pipe),
+    # so gating on sys.stdout.isatty() wrongly stripped every colour and printed
+    # plain white text. Emit colour unless the user explicitly opts out.
     if force_plain:
         return False
     if os.environ.get("NO_COLOR") is not None:
         return False
     if os.environ.get("AGENTSHIELD_NO_COLOR") is not None:
         return False
-    if os.environ.get("AGENTSHIELD_FORCE_COLOR") is not None:
-        return True
-    if os.environ.get("FORCE_COLOR") is not None:
-        return True
-    return sys.stdout.isatty()
+    return True
 
 
 class Painter:
