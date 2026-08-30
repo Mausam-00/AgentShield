@@ -48,46 +48,40 @@ WORDMARK = [
     "╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝╚══════╝╚══════╝╚═════╝",
 ]
 
-# Truecolor brand palette (R, G, B).
-CYAN = (56, 225, 255)
-BLUE = (79, 124, 255)
-VIOLET = (139, 92, 246)
-MAGENTA = (236, 72, 153)
-WHITE = (240, 244, 255)
-GREY = (140, 152, 176)
-DGREY = (96, 106, 128)
-AMBER = (245, 158, 11)
-GREEN = (52, 211, 153)
-RED = (239, 68, 68)
-# PowerShell security-warning yellow (the "run only scripts you trust" prompt).
-PSYELLOW = (240, 210, 60)
-PSGOLD = (196, 156, 0)
+# 16-colour ANSI SGR foreground codes. These are the most universally
+# supported colour codes - rendered by virtually every terminal and CLI host,
+# unlike 24-bit truecolour (38;2;r;g;b) which many hosts silently drop. Each
+# constant is the SGR parameter string used by Painter.fg().
+CYAN = "96"     # bright cyan  - headings / quick-start / reply
+BLUE = "94"     # bright blue
+VIOLET = "95"   # bright magenta
+MAGENTA = "95"  # bright magenta - the "A I" mark
+WHITE = "97"    # bright white
+GREY = "90"     # bright black (grey) - descriptions
+DGREY = "90"    # grey - rules / metadata
+AMBER = "93"    # bright yellow - approve / escalate / reminder
+GREEN = "92"    # bright green - allow
+RED = "91"      # bright red - deny
+# PowerShell security-warning gold (tagline + workflow verbs / separators).
+PSYELLOW = "93"  # bright yellow
+PSGOLD = "33"    # yellow (dimmer) - separators
 
-# VS Code "Dark+" syntax palette - one hue per menu option for a rainbow,
-# code-editor look on the 1-8 intake badges.
-VSC_BLUE = (86, 156, 214)    # keyword
-VSC_TEAL = (78, 201, 176)    # type / class
-VSC_PURPLE = (197, 134, 192)  # control flow
-VSC_RED = (209, 105, 105)    # regexp
-VSC_YELLOW = (220, 220, 170)  # function
-VSC_LGREEN = (181, 206, 168)  # numeric constant
-VSC_ORANGE = (206, 145, 120)  # string
-VSC_LBLUE = (156, 220, 254)  # variable
+# VS Code "Dark+" style rainbow - one hue per 1-8 menu option, mapped to the
+# nearest 16-colour ANSI code.
 MENU_COLORS = [
-    VSC_BLUE, VSC_TEAL, VSC_PURPLE, VSC_RED,
-    VSC_YELLOW, VSC_LGREEN, VSC_ORANGE, VSC_LBLUE,
+    "94",  # [1] blue
+    "96",  # [2] cyan
+    "95",  # [3] magenta
+    "91",  # [4] red
+    "93",  # [5] yellow
+    "92",  # [6] green
+    "33",  # [7] amber/orange
+    "94",  # [8] blue
 ]
 
-# Filled wordmark gradient: Matrix / emerald green, light -> deep. Tuned to glow
-# against the classic PowerShell navy background (#012456).
-ROW_COLORS = [
-    (124, 255, 178),
-    (74, 255, 150),
-    (0, 255, 106),
-    (0, 230, 118),
-    (0, 201, 99),
-    (0, 168, 83),
-]
+# Wordmark: solid bright green (matches the PNG green block letters). 16-colour
+# has no gradient, so every row uses the same bright green for a clean fill.
+ROW_COLORS = ["92", "92", "92", "92", "92", "92"]
 
 
 def supports_color(force_plain: bool) -> bool:
@@ -108,12 +102,11 @@ class Painter:
     def __init__(self, enabled: bool) -> None:
         self.enabled = enabled
 
-    def fg(self, text: str, rgb: tuple[int, int, int], bold: bool = False) -> str:
+    def fg(self, text: str, code: str, bold: bool = False) -> str:
         if not self.enabled:
             return text
-        r, g, b = rgb
         b0 = "1;" if bold else ""
-        return f"\x1b[{b0}38;2;{r};{g};{b}m{text}\x1b[0m"
+        return f"\x1b[{b0}{code}m{text}\x1b[0m"
 
 
 def centre(text: str, width: int = WIDTH) -> str:
