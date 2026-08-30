@@ -28,7 +28,7 @@ immediately:
 
 1. **Render the banner.** Prefer the premium coloured banner by running
    `python scripts/agentshield_banner.py` from the repository root; it prints the
-   gradient AGENTSHIELD wordmark, the magenta `A I` mark, the tagline, the
+   layered cyan-to-green AGENTSHIELD wordmark, the magenta `A I` mark, the tagline, the
    `PREDICT · GOVERN · APPROVE · EXECUTE SAFELY · AUDIT` workflow line, version
    metadata, the numbered intake menu, the decision-badge legend, the quick-start
    example, and the evidence reminder. Pass `--plain` for a no-colour fallback,
@@ -39,6 +39,12 @@ immediately:
 3. **Confirm the resolved mode** at the top of your next reply (ASSESS /
    OBSERVE / GOVERN / RED-TEAM / RESPONSIBLE AI / VALIDATE), then ask only the
    **per-mode follow-up prompts** for that choice (below).
+
+**Show the full banner only once per session.** Render the complete banner on
+the first no-task message of a session. On every later turn, do **not** re-print
+the full banner — instead lead with a compact one-line heading naming the active
+mode, e.g. `── AgentShield · GOVERN ──`. Re-render the full banner only when the
+user explicitly types `home`, `menu`, or `banner`.
 
 **Never run `agentshield_banner.py --wait` yourself.** The `--wait` flag blocks
 for a real keypress and is intended only for the user to run directly via the
