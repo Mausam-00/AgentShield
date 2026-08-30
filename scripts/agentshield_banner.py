@@ -28,16 +28,17 @@ from __future__ import annotations
 import os
 import sys
 
-WIDTH = 80
+WIDTH = 88
 
-# Exact block wordmark (figlet "big"), 6 rows, 77 cols wide.
+# Filled block wordmark (figlet "ANSI Shadow"), 6 rows, 87 cols wide.
+# Solid block glyphs so the letters render filled with colour, not outlined.
 WORDMARK = [
-    r"          _____ ______ _   _ _______ _____ _    _ _____ ______ _      _____  ",
-    r"    /\   / ____|  ____| \ | |__   __/ ____| |  | |_   _|  ____| |    |  __ \ ",
-    r"   /  \ | |  __| |__  |  \| |  | | | (___ | |__| | | | | |__  | |    | |  | |",
-    r"  / /\ \| | |_ |  __| | . ` |  | |  \___ \|  __  | | | |  __| | |    | |  | |",
-    r" / ____ \ |__| | |____| |\  |  | |  ____) | |  | |_| |_| |____| |____| |__| |",
-    r"/_/    \_\_____|______|_| \_|  |_| |_____/|_|  |_|_____|______|______|_____/ ",
+    " █████╗  ██████╗ ███████╗███╗   ██╗████████╗███████╗██╗  ██╗██╗███████╗██╗     ██████╗",
+    "██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝██╔════╝██║  ██║██║██╔════╝██║     ██╔══██╗",
+    "███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║   ███████╗███████║██║█████╗  ██║     ██║  ██║",
+    "██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║   ╚════██║██╔══██║██║██╔══╝  ██║     ██║  ██║",
+    "██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║   ███████║██║  ██║██║███████╗███████╗██████╔╝",
+    "╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝╚══════╝╚══════╝╚═════╝",
 ]
 
 # Truecolor brand palette (R, G, B).
@@ -52,8 +53,16 @@ AMBER = (245, 158, 11)
 GREEN = (52, 211, 153)
 RED = (239, 68, 68)
 
-# Per-row gradient for the wordmark: cyan -> blue -> violet.
-ROW_COLORS = [CYAN, CYAN, BLUE, BLUE, VIOLET, VIOLET]
+# Filled wordmark gradient: Matrix / emerald green, light -> deep. Tuned to glow
+# against the classic PowerShell navy background (#012456).
+ROW_COLORS = [
+    (124, 255, 178),
+    (74, 255, 150),
+    (0, 255, 106),
+    (0, 230, 118),
+    (0, 201, 99),
+    (0, 168, 83),
+]
 
 
 def supports_color(force_plain: bool) -> bool:
