@@ -52,6 +52,24 @@ DGREY = (96, 106, 128)
 AMBER = (245, 158, 11)
 GREEN = (52, 211, 153)
 RED = (239, 68, 68)
+# PowerShell security-warning yellow (the "run only scripts you trust" prompt).
+PSYELLOW = (240, 210, 60)
+PSGOLD = (196, 156, 0)
+
+# VS Code "Dark+" syntax palette - one hue per menu option for a rainbow,
+# code-editor look on the 1-8 intake badges.
+VSC_BLUE = (86, 156, 214)    # keyword
+VSC_TEAL = (78, 201, 176)    # type / class
+VSC_PURPLE = (197, 134, 192)  # control flow
+VSC_RED = (209, 105, 105)    # regexp
+VSC_YELLOW = (220, 220, 170)  # function
+VSC_LGREEN = (181, 206, 168)  # numeric constant
+VSC_ORANGE = (206, 145, 120)  # string
+VSC_LBLUE = (156, 220, 254)  # variable
+MENU_COLORS = [
+    VSC_BLUE, VSC_TEAL, VSC_PURPLE, VSC_RED,
+    VSC_YELLOW, VSC_LGREEN, VSC_ORANGE, VSC_LBLUE,
+]
 
 # Filled wordmark gradient: Matrix / emerald green, light -> deep. Tuned to glow
 # against the classic PowerShell navy background (#012456).
@@ -111,16 +129,16 @@ def render(width: int, plain: bool) -> str:
     out.append("")
     out.append(centre(paint.fg("A  I", MAGENTA, bold=True), width))
 
-    # Tagline in cyan.
+    # Tagline in PowerShell security-warning yellow.
     out.append("")
-    out.append(centre(paint.fg("The Security Control Plane for the Agentic Enterprise", CYAN), width))
+    out.append(centre(paint.fg("The Security Control Plane for the Agentic Enterprise", PSYELLOW, bold=True), width))
 
-    # Workflow line: white words, violet separator dots.
+    # Workflow line: security-yellow words, muted-gold separator dots.
     words = ["PREDICT", "GOVERN", "APPROVE", "EXECUTE SAFELY", "AUDIT"]
     sep_raw = "  .  "
     raw = sep_raw.join(words)
     pad = max(0, (width - len(raw)) // 2)
-    colored = paint.fg(sep_raw, VIOLET).join(paint.fg(w, WHITE) for w in words)
+    colored = paint.fg(sep_raw, PSGOLD).join(paint.fg(w, PSYELLOW, bold=True) for w in words)
     out.append("")
     out.append(" " * pad + colored)
 
@@ -135,29 +153,29 @@ def render(width: int, plain: bool) -> str:
     # Intake menu.
     def item(num: str, badge_rgb, title: str, desc: str) -> None:
         out.append(
-            "  " + paint.fg(num + ".", badge_rgb, bold=True) + "  "
-            + paint.fg(title, WHITE, bold=True)
+            "  " + paint.fg("[" + num + "]", badge_rgb, bold=True) + " "
+            + paint.fg(title, badge_rgb, bold=True)
         )
         out.append("       " + paint.fg("> " + desc, GREY))
 
     out.append("")
     out.append("  " + paint.fg("What would you like to do?", CYAN, bold=True))
     out.append("")
-    item("1", CYAN, "ASSESS an agent / system",
+    item("1", MENU_COLORS[0], "ASSESS an agent / system",
          "Share an agent file, MCP/tool manifest, or prompt -> findings.")
-    item("2", CYAN, "OBSERVE a proposed action",
+    item("2", MENU_COLORS[1], "OBSERVE a proposed action",
          "Describe an action -> predicted impact + the decision it WOULD get.")
-    item("3", VIOLET, "GOVERN - deterministic policy + approval",
+    item("3", MENU_COLORS[2], "GOVERN - deterministic policy + approval",
          "Run the 7 gates -> ALLOW/TRANSFORM/APPROVE/ESCALATE/DENY + binding.")
-    item("4", MAGENTA, "RED-TEAM (Gate R, simulation-only)",
+    item("4", MENU_COLORS[3], "RED-TEAM (Gate R, simulation-only)",
          "Static probe: ASR, refusal, leakage, injection-resistance x 9 families.")
-    item("5", VIOLET, "RESPONSIBLE AI assessment",
+    item("5", MENU_COLORS[4], "RESPONSIBLE AI assessment",
          "Score 6 RAI pillars -> RAI-PASS / RAI-WARN / RAI-BLOCK (advisory).")
-    item("6", GREEN, "VALIDATE an outcome",
+    item("6", MENU_COLORS[5], "VALIDATE an outcome",
          "Compare an approved action + plan vs what happened; flag deviation.")
-    item("7", AMBER, "Generate an HTML evidence report",
+    item("7", MENU_COLORS[6], "Generate an HTML evidence report",
          "From an existing assessment (explicit request only).")
-    item("8", GREY, "Not sure? Describe your situation",
+    item("8", MENU_COLORS[7], "Not sure? Describe your situation",
          "I'll pick the right mode and say exactly what to provide.")
 
     out.append("")
