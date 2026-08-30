@@ -82,26 +82,35 @@ PSGOLD = "33"    # yellow (dimmer) - separators
 # VS Code "Dark+" style rainbow - one hue per 1-8 menu option, mapped to the
 # nearest 16-colour ANSI code.
 MENU_COLORS = [
-    "94",  # [1] blue
-    "96",  # [2] cyan
-    "95",  # [3] magenta
-    "91",  # [4] red
-    "93",  # [5] yellow
-    "92",  # [6] green
-    "33",  # [7] amber/orange
-    "94",  # [8] blue
+    "94",  # [1] ASSESS       - blue
+    "92",  # [2] OBSERVE      - green
+    "95",  # [3] GOVERN       - magenta / violet
+    "91",  # [4] RED-TEAM     - red
+    "93",  # [5] RESPONSIBLE  - yellow
+    "96",  # [6] VALIDATE     - cyan
+    "33",  # [7] HTML report  - amber / orange
+    "96",  # [8] guidance     - light cyan
 ]
 
-# Wordmark: solid bright green (matches the PNG green block letters). 16-colour
-# has no gradient, so every row uses the same bright green for a clean fill.
-ROW_COLORS = ["92", "92", "92", "92", "92", "92"]
+# Layered wordmark: bright cyan upper body -> bright green lower body -> dim
+# green shadow row, for a cyan/green depth effect on the navy background.
+ROW_COLORS = ["96", "96", "96", "92", "92", "32"]
+
+# ASCII-only wordmark fallback for terminals without Unicode block support.
+WORDMARK_ASCII = [
+    "  _   ___ ___ _  _ _____ ___ _  _ ___ ___ _    ___  ",
+    " /_\\ / __| __| \\| |_   _/ __| || |_ _| __| |  |   \\ ",
+    "/ _ \\ (_ | _|| .` | | | \\__ \\ __ || || _|| |__| |) |",
+    "/_/ \\_\\___|___|_|\\_| |_| |___/_||_|___|___|____|___/ ",
+]
 
 
 def supports_color(force_plain: bool) -> bool:
     # Colour is ON by default. AgentShield's banner almost always runs with its
     # stdout piped (the Copilot CLI shell escape and agent tool calls both pipe),
     # so gating on sys.stdout.isatty() wrongly stripped every colour and printed
-    # plain white text. Emit colour unless the user explicitly opts out.
+    # plain white text. Emit colour unless the user explicitly opts out via
+    # --plain or NO_COLOR / AGENTSHIELD_NO_COLOR (the clean-redirect path).
     if force_plain:
         return False
     if os.environ.get("NO_COLOR") is not None:
@@ -109,6 +118,51 @@ def supports_color(force_plain: bool) -> bool:
     if os.environ.get("AGENTSHIELD_NO_COLOR") is not None:
         return False
     return True
+
+
+def supports_unicode() -> bool:
+    # Block-drawing glyphs need a Unicode-capable stdout. We reconfigure stdout
+    # to UTF-8 at import time, but honour an explicit opt-out and probe the
+    # encoding so legacy code pages fall back to the ASCII wordmark.
+    if os.environ.get("AGENTSHIELD_ASCII") is not None:
+        return False
+    enc = (getattr(sys.stdout, "encoding", "") or "").lower()
+    if "utf" in enc:
+        return True
+    try:
+        "█".encode(enc or "ascii")
+        return True
+    except (UnicodeEncodeError, LookupError):
+        return False
+
+
+def detect_width(requested: int | None) -> int:
+    # Explicit --width wins; otherwise detect the real terminal width and clamp
+    # to a readable 60-100 columns. Falls back to WIDTH when detection fails.
+    if requested is not None:
+        return max(40, min(requested, 100))
+    try:
+        import shutil
+
+        cols = shutil.get_terminal_size(fallback=(WIDTH, 24)).columns
+    except Exception:
+        cols = WIDTH
+    return max(40, min(cols, 100))
+
+
+def detect_version() -> str:
+    # Use the genuine project version; never invent one. Read __version__ from
+    # the agentshield package, falling back to a sane default.
+    here = os.path.dirname(os.path.abspath(__file__))
+    init = os.path.join(here, "..", "agentshield", "__init__.py")
+    try:
+        with open(init, encoding="utf-8") as fh:
+            for line in fh:
+                if line.strip().startswith("__version__"):
+                    return line.split("=", 1)[1].strip().strip('"').strip("'")
+    except OSError:
+        pass
+    return "1.0.0"
 
 
 class Painter:
@@ -133,14 +187,25 @@ def rule(paint: Painter, width: int = WIDTH) -> str:
 
 def render(width: int, plain: bool) -> str:
     paint = Painter(supports_color(plain))
+    unicode_ok = supports_unicode()
+    version = detect_version()
     out: list[str] = []
     out.append("")
 
-    # Wordmark, centred as a block using the widest row.
-    block_w = max(len(r) for r in WORDMARK)
-    left = max(0, (width - block_w) // 2)
-    for row, color in zip(WORDMARK, ROW_COLORS):
-        out.append(" " * left + paint.fg(row, color, bold=True))
+    # Wordmark: full Unicode block art when it fits and Unicode is available;
+    # ASCII wordmark when Unicode is unavailable; compact heading when the
+    # terminal is too narrow for the block art.
+    block = WORDMARK if unicode_ok else WORDMARK_ASCII
+    block_w = max(len(r) for r in block)
+    dot = "·" if unicode_ok else "-"
+    if width < block_w + 2:
+        # Compact banner for narrow terminals.
+        out.append(centre(paint.fg("A G E N T S H I E L D", "96", bold=True), width))
+    else:
+        left = max(0, (width - block_w) // 2)
+        colors = ROW_COLORS if unicode_ok else ["96", "96", "92", "92"]
+        for row, color in zip(block, colors):
+            out.append(" " * left + paint.fg(row, color, bold=True))
 
     # "A I" mark in magenta.
     out.append("")
@@ -150,19 +215,19 @@ def render(width: int, plain: bool) -> str:
     out.append("")
     out.append(centre(paint.fg("The Security Control Plane for the Agentic Enterprise", PSYELLOW, bold=True), width))
 
-    # Workflow line: security-yellow words, muted-gold separator dots.
+    # Workflow line: security-yellow words, muted separator dots.
     words = ["PREDICT", "GOVERN", "APPROVE", "EXECUTE SAFELY", "AUDIT"]
-    sep_raw = "  .  "
+    sep_raw = f"  {dot}  "
     raw = sep_raw.join(words)
     pad = max(0, (width - len(raw)) // 2)
     colored = paint.fg(sep_raw, PSGOLD).join(paint.fg(w, PSYELLOW, bold=True) for w in words)
     out.append("")
     out.append(" " * pad + colored)
 
-    # Metadata + version.
+    # Metadata + version (genuine project version).
     out.append("")
-    out.append(centre(paint.fg("Deterministic governance for AI agents  .  simulation-first", DGREY), width))
-    out.append(centre(paint.fg("v1.0", GREY), width))
+    out.append(centre(paint.fg(f"Deterministic governance for AI agents  {dot}  Simulation-first", DGREY), width))
+    out.append(centre(paint.fg(f"v{version}", GREY), width))
 
     out.append("")
     out.append(rule(paint, width))
@@ -173,7 +238,25 @@ def render(width: int, plain: bool) -> str:
             "  " + paint.fg("[" + num + "]", badge_rgb, bold=True) + " "
             + paint.fg(title, badge_rgb, bold=True)
         )
-        out.append("       " + paint.fg("> " + desc, GREY))
+        # Wrap long descriptions cleanly to the content width, keeping the
+        # hanging indent aligned under the first word.
+        indent = "       "
+        prefix = "> "
+        avail = max(20, width - len(indent) - len(prefix))
+        words_d = desc.split()
+        line = ""
+        wrapped: list[str] = []
+        for w in words_d:
+            if line and len(line) + 1 + len(w) > avail:
+                wrapped.append(line)
+                line = w
+            else:
+                line = f"{line} {w}".strip()
+        if line:
+            wrapped.append(line)
+        for i, seg in enumerate(wrapped):
+            lead = prefix if i == 0 else "  "
+            out.append(indent + paint.fg(lead + seg, GREY))
 
     out.append("")
     out.append("  " + paint.fg("What would you like to do?", CYAN, bold=True))
@@ -193,7 +276,7 @@ def render(width: int, plain: bool) -> str:
     item("7", MENU_COLORS[6], "Generate an HTML evidence report",
          "From an existing assessment (explicit request only).")
     item("8", MENU_COLORS[7], "Not sure? Describe your situation",
-         "I'll pick the right mode and say exactly what to provide.")
+         "AgentShield will select the appropriate mode and identify the required evidence.")
 
     out.append("")
     out.append(rule(paint, width))
@@ -270,16 +353,14 @@ def _wait_gate(plain: bool) -> None:
 def main(argv: list[str]) -> int:
     plain = "--plain" in argv
     wait = "--wait" in argv
-    if "--force-color" in argv or "--color" in argv:
-        os.environ["AGENTSHIELD_FORCE_COLOR"] = "1"
-    width = WIDTH
+    requested: int | None = None
     if "--width" in argv:
         try:
-            width = int(argv[argv.index("--width") + 1])
+            requested = int(argv[argv.index("--width") + 1])
         except (ValueError, IndexError):
-            width = WIDTH
-    # Narrow-terminal courtesy: keep content readable.
-    width = max(60, min(width, 100))
+            requested = None
+    # Auto-detect terminal width when not explicitly requested.
+    width = detect_width(requested)
     if wait:
         _wait_gate(plain)
     sys.stdout.write(render(width, plain) + "\n")
