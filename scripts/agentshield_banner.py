@@ -28,152 +28,54 @@ from __future__ import annotations
 import os
 import sys
 
-# Ensure the block-drawing glyphs and ANSI colour survive on legacy Windows
-# consoles (cp1252) so the banner renders identically wherever it is invoked.
-try:
-    sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
-except (AttributeError, ValueError):
-    pass
+WIDTH = 80
 
-# On Windows, turn on ANSI escape interpretation (ENABLE_VIRTUAL_TERMINAL_
-# PROCESSING) so the classic console / conhost renders the colour codes instead
-# of printing them literally. Modern terminals already do this; the call is a
-# harmless no-op there. Failure degrades gracefully to plain text.
-if os.name == "nt":
-    try:
-        import ctypes
-
-        _k32 = ctypes.windll.kernel32
-        _k32.SetConsoleMode(_k32.GetStdHandle(-11), 7)
-    except Exception:
-        pass
-
-WIDTH = 88
-
-# Filled block wordmark (figlet "ANSI Shadow"), 6 rows, 87 cols wide.
-# Solid block glyphs so the letters render filled with colour, not outlined.
+# Exact block wordmark (figlet "big"), 6 rows, 77 cols wide.
 WORDMARK = [
-    " █████╗  ██████╗ ███████╗███╗   ██╗████████╗███████╗██╗  ██╗██╗███████╗██╗     ██████╗",
-    "██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝██╔════╝██║  ██║██║██╔════╝██║     ██╔══██╗",
-    "███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║   ███████╗███████║██║█████╗  ██║     ██║  ██║",
-    "██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║   ╚════██║██╔══██║██║██╔══╝  ██║     ██║  ██║",
-    "██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║   ███████║██║  ██║██║███████╗███████╗██████╔╝",
-    "╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝╚══════╝╚══════╝╚═════╝",
+    r"          _____ ______ _   _ _______ _____ _    _ _____ ______ _      _____  ",
+    r"    /\   / ____|  ____| \ | |__   __/ ____| |  | |_   _|  ____| |    |  __ \ ",
+    r"   /  \ | |  __| |__  |  \| |  | | | (___ | |__| | | | | |__  | |    | |  | |",
+    r"  / /\ \| | |_ |  __| | . ` |  | |  \___ \|  __  | | | |  __| | |    | |  | |",
+    r" / ____ \ |__| | |____| |\  |  | |  ____) | |  | |_| |_| |____| |____| |__| |",
+    r"/_/    \_\_____|______|_| \_|  |_| |_____/|_|  |_|_____|______|______|_____/ ",
 ]
 
-# 16-colour ANSI SGR foreground codes. These are the most universally
-# supported colour codes - rendered by virtually every terminal and CLI host,
-# unlike 24-bit truecolour (38;2;r;g;b) which many hosts silently drop. Each
-# constant is the SGR parameter string used by Painter.fg().
-CYAN = "96"     # bright cyan  - headings / quick-start / reply
-BLUE = "94"     # bright blue
-VIOLET = "95"   # bright magenta
-MAGENTA = "95"  # bright magenta - the "A I" mark
-WHITE = "97"    # bright white
-GREY = "90"     # bright black (grey) - descriptions
-DGREY = "90"    # grey - rules / metadata
-AMBER = "93"    # bright yellow - approve / escalate / reminder
-GREEN = "92"    # bright green - allow
-RED = "91"      # bright red - deny
-# PowerShell security-warning gold (tagline + workflow verbs / separators).
-PSYELLOW = "93"  # bright yellow
-PSGOLD = "33"    # yellow (dimmer) - separators
+# Truecolor brand palette (R, G, B).
+CYAN = (56, 225, 255)
+BLUE = (79, 124, 255)
+VIOLET = (139, 92, 246)
+MAGENTA = (236, 72, 153)
+WHITE = (240, 244, 255)
+GREY = (140, 152, 176)
+DGREY = (96, 106, 128)
+AMBER = (245, 158, 11)
+GREEN = (52, 211, 153)
+RED = (239, 68, 68)
 
-# VS Code "Dark+" style rainbow - one hue per 1-8 menu option, mapped to the
-# nearest 16-colour ANSI code.
-MENU_COLORS = [
-    "94",  # [1] ASSESS       - blue
-    "92",  # [2] OBSERVE      - green
-    "95",  # [3] GOVERN       - magenta / violet
-    "91",  # [4] RED-TEAM     - red
-    "93",  # [5] RESPONSIBLE  - yellow
-    "96",  # [6] VALIDATE     - cyan
-    "33",  # [7] HTML report  - amber / orange
-    "96",  # [8] guidance     - light cyan
-]
-
-# Layered wordmark: bright cyan upper body -> bright green lower body -> dim
-# green shadow row, for a cyan/green depth effect on the navy background.
-ROW_COLORS = ["96", "96", "96", "92", "92", "32"]
-
-# ASCII-only wordmark fallback for terminals without Unicode block support.
-WORDMARK_ASCII = [
-    "  _   ___ ___ _  _ _____ ___ _  _ ___ ___ _    ___  ",
-    " /_\\ / __| __| \\| |_   _/ __| || |_ _| __| |  |   \\ ",
-    "/ _ \\ (_ | _|| .` | | | \\__ \\ __ || || _|| |__| |) |",
-    "/_/ \\_\\___|___|_|\\_| |_| |___/_||_|___|___|____|___/ ",
-]
+# Per-row gradient for the wordmark: cyan -> blue -> violet.
+ROW_COLORS = [CYAN, CYAN, BLUE, BLUE, VIOLET, VIOLET]
 
 
 def supports_color(force_plain: bool) -> bool:
-    # Colour is ON by default. AgentShield's banner almost always runs with its
-    # stdout piped (the Copilot CLI shell escape and agent tool calls both pipe),
-    # so gating on sys.stdout.isatty() wrongly stripped every colour and printed
-    # plain white text. Emit colour unless the user explicitly opts out via
-    # --plain or NO_COLOR / AGENTSHIELD_NO_COLOR (the clean-redirect path).
     if force_plain:
         return False
     if os.environ.get("NO_COLOR") is not None:
         return False
     if os.environ.get("AGENTSHIELD_NO_COLOR") is not None:
         return False
-    return True
-
-
-def supports_unicode() -> bool:
-    # Block-drawing glyphs need a Unicode-capable stdout. We reconfigure stdout
-    # to UTF-8 at import time, but honour an explicit opt-out and probe the
-    # encoding so legacy code pages fall back to the ASCII wordmark.
-    if os.environ.get("AGENTSHIELD_ASCII") is not None:
-        return False
-    enc = (getattr(sys.stdout, "encoding", "") or "").lower()
-    if "utf" in enc:
-        return True
-    try:
-        "█".encode(enc or "ascii")
-        return True
-    except (UnicodeEncodeError, LookupError):
-        return False
-
-
-def detect_width(requested: int | None) -> int:
-    # Explicit --width wins; otherwise detect the real terminal width and clamp
-    # to a readable 60-100 columns. Falls back to WIDTH when detection fails.
-    if requested is not None:
-        return max(40, min(requested, 100))
-    try:
-        import shutil
-
-        cols = shutil.get_terminal_size(fallback=(WIDTH, 24)).columns
-    except Exception:
-        cols = WIDTH
-    return max(40, min(cols, 100))
-
-
-def detect_version() -> str:
-    # Use the genuine project version; never invent one. Read __version__ from
-    # the agentshield package, falling back to a sane default.
-    here = os.path.dirname(os.path.abspath(__file__))
-    init = os.path.join(here, "..", "agentshield", "__init__.py")
-    try:
-        with open(init, encoding="utf-8") as fh:
-            for line in fh:
-                if line.strip().startswith("__version__"):
-                    return line.split("=", 1)[1].strip().strip('"').strip("'")
-    except OSError:
-        pass
-    return "1.0.0"
+    return sys.stdout.isatty()
 
 
 class Painter:
     def __init__(self, enabled: bool) -> None:
         self.enabled = enabled
 
-    def fg(self, text: str, code: str, bold: bool = False) -> str:
+    def fg(self, text: str, rgb: tuple[int, int, int], bold: bool = False) -> str:
         if not self.enabled:
             return text
+        r, g, b = rgb
         b0 = "1;" if bold else ""
-        return f"\x1b[{b0}{code}m{text}\x1b[0m"
+        return f"\x1b[{b0}38;2;{r};{g};{b}m{text}\x1b[0m"
 
 
 def centre(text: str, width: int = WIDTH) -> str:
@@ -187,47 +89,36 @@ def rule(paint: Painter, width: int = WIDTH) -> str:
 
 def render(width: int, plain: bool) -> str:
     paint = Painter(supports_color(plain))
-    unicode_ok = supports_unicode()
-    version = detect_version()
     out: list[str] = []
     out.append("")
 
-    # Wordmark: full Unicode block art when it fits and Unicode is available;
-    # ASCII wordmark when Unicode is unavailable; compact heading when the
-    # terminal is too narrow for the block art.
-    block = WORDMARK if unicode_ok else WORDMARK_ASCII
-    block_w = max(len(r) for r in block)
-    dot = "·" if unicode_ok else "-"
-    if width < block_w + 2:
-        # Compact banner for narrow terminals.
-        out.append(centre(paint.fg("A G E N T S H I E L D", "96", bold=True), width))
-    else:
-        left = max(0, (width - block_w) // 2)
-        colors = ROW_COLORS if unicode_ok else ["96", "96", "92", "92"]
-        for row, color in zip(block, colors):
-            out.append(" " * left + paint.fg(row, color, bold=True))
+    # Wordmark, centred as a block using the widest row.
+    block_w = max(len(r) for r in WORDMARK)
+    left = max(0, (width - block_w) // 2)
+    for row, color in zip(WORDMARK, ROW_COLORS):
+        out.append(" " * left + paint.fg(row, color, bold=True))
 
     # "A I" mark in magenta.
     out.append("")
     out.append(centre(paint.fg("A  I", MAGENTA, bold=True), width))
 
-    # Tagline in PowerShell security-warning yellow.
+    # Tagline in cyan.
     out.append("")
-    out.append(centre(paint.fg("The Security Control Plane for the Agentic Enterprise", PSYELLOW, bold=True), width))
+    out.append(centre(paint.fg("The Security Control Plane for the Agentic Enterprise", CYAN), width))
 
-    # Workflow line: security-yellow words, muted separator dots.
+    # Workflow line: white words, violet separator dots.
     words = ["PREDICT", "GOVERN", "APPROVE", "EXECUTE SAFELY", "AUDIT"]
-    sep_raw = f"  {dot}  "
+    sep_raw = "  .  "
     raw = sep_raw.join(words)
     pad = max(0, (width - len(raw)) // 2)
-    colored = paint.fg(sep_raw, PSGOLD).join(paint.fg(w, PSYELLOW, bold=True) for w in words)
+    colored = paint.fg(sep_raw, VIOLET).join(paint.fg(w, WHITE) for w in words)
     out.append("")
     out.append(" " * pad + colored)
 
-    # Metadata + version (genuine project version).
+    # Metadata + version.
     out.append("")
-    out.append(centre(paint.fg(f"Deterministic governance for AI agents  {dot}  Simulation-first", DGREY), width))
-    out.append(centre(paint.fg(f"v{version}", GREY), width))
+    out.append(centre(paint.fg("Deterministic governance for AI agents  .  simulation-first", DGREY), width))
+    out.append(centre(paint.fg("v1.0", GREY), width))
 
     out.append("")
     out.append(rule(paint, width))
@@ -235,48 +126,30 @@ def render(width: int, plain: bool) -> str:
     # Intake menu.
     def item(num: str, badge_rgb, title: str, desc: str) -> None:
         out.append(
-            "  " + paint.fg("[" + num + "]", badge_rgb, bold=True) + " "
-            + paint.fg(title, badge_rgb, bold=True)
+            "  " + paint.fg(num + ".", badge_rgb, bold=True) + "  "
+            + paint.fg(title, WHITE, bold=True)
         )
-        # Wrap long descriptions cleanly to the content width, keeping the
-        # hanging indent aligned under the first word.
-        indent = "       "
-        prefix = "> "
-        avail = max(20, width - len(indent) - len(prefix))
-        words_d = desc.split()
-        line = ""
-        wrapped: list[str] = []
-        for w in words_d:
-            if line and len(line) + 1 + len(w) > avail:
-                wrapped.append(line)
-                line = w
-            else:
-                line = f"{line} {w}".strip()
-        if line:
-            wrapped.append(line)
-        for i, seg in enumerate(wrapped):
-            lead = prefix if i == 0 else "  "
-            out.append(indent + paint.fg(lead + seg, GREY))
+        out.append("       " + paint.fg("> " + desc, GREY))
 
     out.append("")
     out.append("  " + paint.fg("What would you like to do?", CYAN, bold=True))
     out.append("")
-    item("1", MENU_COLORS[0], "ASSESS an agent / system",
+    item("1", CYAN, "ASSESS an agent / system",
          "Share an agent file, MCP/tool manifest, or prompt -> findings.")
-    item("2", MENU_COLORS[1], "OBSERVE a proposed action",
+    item("2", CYAN, "OBSERVE a proposed action",
          "Describe an action -> predicted impact + the decision it WOULD get.")
-    item("3", MENU_COLORS[2], "GOVERN - deterministic policy + approval",
+    item("3", VIOLET, "GOVERN - deterministic policy + approval",
          "Run the 7 gates -> ALLOW/TRANSFORM/APPROVE/ESCALATE/DENY + binding.")
-    item("4", MENU_COLORS[3], "RED-TEAM (Gate R, simulation-only)",
+    item("4", MAGENTA, "RED-TEAM (Gate R, simulation-only)",
          "Static probe: ASR, refusal, leakage, injection-resistance x 9 families.")
-    item("5", MENU_COLORS[4], "RESPONSIBLE AI assessment",
+    item("5", VIOLET, "RESPONSIBLE AI assessment",
          "Score 6 RAI pillars -> RAI-PASS / RAI-WARN / RAI-BLOCK (advisory).")
-    item("6", MENU_COLORS[5], "VALIDATE an outcome",
+    item("6", GREEN, "VALIDATE an outcome",
          "Compare an approved action + plan vs what happened; flag deviation.")
-    item("7", MENU_COLORS[6], "Generate an HTML evidence report",
+    item("7", AMBER, "Generate an HTML evidence report",
          "From an existing assessment (explicit request only).")
-    item("8", MENU_COLORS[7], "Not sure? Describe your situation",
-         "AgentShield will select the appropriate mode and identify the required evidence.")
+    item("8", GREY, "Not sure? Describe your situation",
+         "I'll pick the right mode and say exactly what to provide.")
 
     out.append("")
     out.append(rule(paint, width))
@@ -353,14 +226,14 @@ def _wait_gate(plain: bool) -> None:
 def main(argv: list[str]) -> int:
     plain = "--plain" in argv
     wait = "--wait" in argv
-    requested: int | None = None
+    width = WIDTH
     if "--width" in argv:
         try:
-            requested = int(argv[argv.index("--width") + 1])
+            width = int(argv[argv.index("--width") + 1])
         except (ValueError, IndexError):
-            requested = None
-    # Auto-detect terminal width when not explicitly requested.
-    width = detect_width(requested)
+            width = WIDTH
+    # Narrow-terminal courtesy: keep content readable.
+    width = max(60, min(width, 100))
     if wait:
         _wait_gate(plain)
     sys.stdout.write(render(width, plain) + "\n")

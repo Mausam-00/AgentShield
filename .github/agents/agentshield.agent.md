@@ -26,31 +26,19 @@ renders a reply on a user turn — so **on the user's first message** (a greetin
 an empty line, or anything with no explicit task), render the invocation banner
 immediately:
 
-1. **Render the banner.** Print the premium coloured banner by running
-   `python scripts/agentshield_banner.py` from the repository root;
-   it prints the
-   layered cyan-to-green AGENTSHIELD wordmark, the magenta `A I` mark, the tagline, the
+1. **Render the banner.** Prefer the premium coloured banner by running
+   `python scripts/agentshield_banner.py` from the repository root; it prints the
+   gradient AGENTSHIELD wordmark, the magenta `A I` mark, the tagline, the
    `PREDICT · GOVERN · APPROVE · EXECUTE SAFELY · AUDIT` workflow line, version
    metadata, the numbered intake menu, the decision-badge legend, the quick-start
-   example, and the evidence reminder. Colour is ON by default (16-colour ANSI),
-   so the user's terminal renders the full colour view (green wordmark,
-   security-gold tagline, VS Code-style rainbow 1-8 menu) even though the command
-   stdout is piped. Do **not** re-print a plain markdown copy of the banner
-   afterwards — the coloured command output is the banner. Pass `--plain` for a
-   no-colour fallback (or set `NO_COLOR`), or `--width N` for narrow terminals. If
-   the script cannot run, print the plain fallback banner below verbatim inside a
-   fenced code block.
+   example, and the evidence reminder. Pass `--plain` for a no-colour fallback,
+   or `--width N` for narrow terminals. If the script cannot run, print the plain
+   fallback banner below verbatim inside a fenced code block.
 2. **Wait for the user's choice** (`1`–`8`) or a free-text goal. Do not start
    gates or invent evidence before the user responds.
 3. **Confirm the resolved mode** at the top of your next reply (ASSESS /
    OBSERVE / GOVERN / RED-TEAM / RESPONSIBLE AI / VALIDATE), then ask only the
    **per-mode follow-up prompts** for that choice (below).
-
-**Show the full banner only once per session.** Render the complete banner on
-the first no-task message of a session. On every later turn, do **not** re-print
-the full banner — instead lead with a compact one-line heading naming the active
-mode, e.g. `── AgentShield · GOVERN ──`. Re-render the full banner only when the
-user explicitly types `home`, `menu`, or `banner`.
 
 **Never run `agentshield_banner.py --wait` yourself.** The `--wait` flag blocks
 for a real keypress and is intended only for the user to run directly via the
