@@ -27,13 +27,19 @@ an empty line, or anything with no explicit task), render the invocation banner
 immediately:
 
 1. **Render the banner.** Prefer the premium coloured banner by running
-   `python scripts/agentshield_banner.py` from the repository root; it prints the
+   `python scripts/agentshield_banner.py --force-color` from the repository root;
+   it prints the
    gradient AGENTSHIELD wordmark, the magenta `A I` mark, the tagline, the
    `PREDICT · GOVERN · APPROVE · EXECUTE SAFELY · AUDIT` workflow line, version
    metadata, the numbered intake menu, the decision-badge legend, the quick-start
-   example, and the evidence reminder. Pass `--plain` for a no-colour fallback,
-   or `--width N` for narrow terminals. If the script cannot run, print the plain
-   fallback banner below verbatim inside a fenced code block.
+   example, and the evidence reminder. The `--force-color` flag emits ANSI
+   truecolour even though the agent captures stdout through a pipe, so the user's
+   terminal renders the full colour view (green wordmark, security-gold tagline,
+   VS Code syntax-rainbow menu on navy). Do **not** re-print a plain markdown copy
+   of the banner afterwards — the coloured command output is the banner. Pass
+   `--plain` for a no-colour fallback, or `--width N` for narrow terminals. If the
+   script cannot run, print the plain fallback banner below verbatim inside a
+   fenced code block.
 2. **Wait for the user's choice** (`1`–`8`) or a free-text goal. Do not start
    gates or invent evidence before the user responds.
 3. **Confirm the resolved mode** at the top of your next reply (ASSESS /

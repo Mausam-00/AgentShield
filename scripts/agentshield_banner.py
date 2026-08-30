@@ -28,6 +28,13 @@ from __future__ import annotations
 import os
 import sys
 
+# Ensure the block-drawing glyphs and ANSI colour survive on legacy Windows
+# consoles (cp1252) so the banner renders identically wherever it is invoked.
+try:
+    sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+except (AttributeError, ValueError):
+    pass
+
 WIDTH = 88
 
 # Filled block wordmark (figlet "ANSI Shadow"), 6 rows, 87 cols wide.
@@ -90,6 +97,10 @@ def supports_color(force_plain: bool) -> bool:
         return False
     if os.environ.get("AGENTSHIELD_NO_COLOR") is not None:
         return False
+    if os.environ.get("AGENTSHIELD_FORCE_COLOR") is not None:
+        return True
+    if os.environ.get("FORCE_COLOR") is not None:
+        return True
     return sys.stdout.isatty()
 
 
@@ -253,6 +264,8 @@ def _wait_gate(plain: bool) -> None:
 def main(argv: list[str]) -> int:
     plain = "--plain" in argv
     wait = "--wait" in argv
+    if "--force-color" in argv or "--color" in argv:
+        os.environ["AGENTSHIELD_FORCE_COLOR"] = "1"
     width = WIDTH
     if "--width" in argv:
         try:
