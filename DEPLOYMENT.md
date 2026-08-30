@@ -65,29 +65,6 @@ Keep it alive with `pm2`, a `systemd` unit, or the container above.
 
 ---
 
-## Option 3 — Vercel / static & serverless hosts (site only)
-
-Vercel deploys and runs the marketing site, **but not** the Python upload
-feature (serverless Node can't spawn Python, and files outside the Root
-Directory aren't deployed). The upload section returns the graceful
-"engine not found" message; everything else works.
-
-To deploy the **site** on Vercel from this monorepo:
-
-1. Import the repo in Vercel.
-2. **Project → Settings → General → Root Directory → `agentshield-web`** (click
-   *Edit*, type the folder, save). This tells Vercel the Next.js app lives in
-   that subfolder.
-3. Framework Preset: **Next.js** (auto-detected). Build/Output can stay default.
-4. Deploy.
-
-For a Vercel deployment that also runs the assessment, you would need to move the
-engine call to a **Vercel Python Serverless Function** (`api/*.py`) and include
-the `agentshield/` package inside the Root Directory — a larger change. For now,
-use Option 1 or 2 when you need the live upload feature.
-
----
-
 ## Quick host comparison
 
 | Host | Site renders | Upload feature works | Notes |
@@ -95,4 +72,3 @@ use Option 1 or 2 when you need the live upload feature.
 | Docker (Option 1) | ✅ | ✅ | Node + Python in one image |
 | VM / bare Node (Option 2) | ✅ | ✅ | install Python 3 yourself |
 | Azure Container Apps / App Service (container) | ✅ | ✅ | deploy the image |
-| Vercel / Netlify (serverless) | ✅ | ❌ (graceful message) | set Root Directory = `agentshield-web` |
