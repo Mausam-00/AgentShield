@@ -63,28 +63,34 @@ python scripts/dashboard_report.py assessment.json docs
 
 ## Output
 
-Two interchangeable, self-contained renderers share the same input schema
+Two self-contained renderers share the same input schema
 (`references/report-schema.md`). Both validate, redact, escape, and fail closed
-on unsafe output.
+on unsafe output. **`dashboard_report.py` (the Vision UI dashboard) is the
+default renderer for all report generation** — use it unless the user explicitly
+asks for the classic print layout. The live web app renders every report through
+`dashboard_report.py`.
 
-### 1. Classic document (light, print-friendly)
-
-```text
-scripts/generate_report.py INPUT_JSON OUTPUT_HTML
-```
-
-Sectioned report layout. Best for archival, printing, and long-form evidence.
-
-### 2. Dark dashboard (recommended for review)
+### 1. Vision UI dashboard (default)
 
 ```text
 scripts/dashboard_report.py INPUT_JSON OUTPUT_HTML
 ```
 
-Dark, dashboard-style layout with KPI cards (posture pill, conic-gradient score
-ring, coverage gauge, severity breakdown), a subject panel, a separate runtime
-panel, an optional control-family grid, severity-coded finding cards, a policy
-table, and ranked remediations. Fully responsive.
+The Vision UI dark dashboard: a deep-navy glassmorphism layout with an icon
+sidebar, KPI cards (posture pill, conic-gradient score ring, coverage gauge,
+severity breakdown), a subject panel, a separate runtime panel, an optional
+control-family grid, severity-coded finding cards, a policy table, and ranked
+remediations. Fully responsive. This is the standard output for AgentShield
+reports.
+
+### 2. Classic document (light, print-friendly — opt-in)
+
+```text
+scripts/generate_report.py INPUT_JSON OUTPUT_HTML
+```
+
+Sectioned light report layout. Use only when the user explicitly requests a
+print-friendly or long-form archival document.
 
 Both renderers produce embedded CSS and inline SVG only: no JavaScript, remote
 fonts, trackers, iframes, or network calls.

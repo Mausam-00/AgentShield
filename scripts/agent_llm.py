@@ -50,6 +50,23 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 AGENT_PERSONA = ROOT / ".github" / "agents" / "agentshield.agent.md"
 
+# Content-addressed enrichment cache. When present, an LLM narrative for a given
+# (persona + definition + model + prompt-version) is authored once and reused
+# verbatim by every caller -- so the web app and the CLI render byte-identical
+# reports even though the underlying model is not perfectly deterministic. The
+# cache is committed to the repo, so the container image (web) and a local
+# checkout (CLI) share the same pinned narratives. Override the location with
+# AGENTSHIELD_ENRICH_CACHE; set AGENTSHIELD_ENRICH_CACHE=off to disable.
+import hashlib
+
+_CACHE_ENV = os.environ.get("AGENTSHIELD_ENRICH_CACHE", "")
+ENRICH_CACHE_DIR = (
+    None
+    if _CACHE_ENV.lower() in {"off", "0", "false", "none"}
+    else Path(_CACHE_ENV) if _CACHE_ENV else ROOT / "enrichment_cache"
+)
+PROMPT_VERSION = "v1"
+
 DEFAULT_API_VERSION = "2024-10-21"
 DEFAULT_AI_API_VERSION = "2024-05-01-preview"
 DEFAULT_GH_ENDPOINT = "https://models.github.ai/inference"
@@ -218,7 +235,8 @@ def _call_azure_ai(system: str, user: str) -> str:
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ],
-        "temperature": 0.2,
+        "temperature": 0,
+        "seed": 7,
         "max_tokens": 4000,
     }
     body = _post_json(url, {"api-key": key}, payload)
@@ -238,7 +256,8 @@ def _call_github_models(system: str, user: str) -> str:
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ],
-        "temperature": 0.2,
+        "temperature": 0,
+        "seed": 7,
         "max_tokens": 4000,
         "response_format": {"type": "json_object"},
     }
@@ -261,7 +280,8 @@ def _call_azure_openai(system: str, user: str) -> str:
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ],
-        "temperature": 0.2,
+        "temperature": 0,
+        "seed": 7,
         "max_tokens": 4000,
         "response_format": {"type": "json_object"},
     }
@@ -463,6 +483,45 @@ def _merge(base: dict, patch: dict) -> dict:
     return report
 
 
+def _cache_key(system: str, user: str) -> str:
+    """Stable key over everything that determines the LLM narrative."""
+
+    provider = active_provider() or "none"
+    model = (
+        os.environ.get("AZURE_AI_MODEL")
+        or os.environ.get("AZURE_OPENAI_DEPLOYMENT")
+        or os.environ.get("GITHUB_MODELS_MODEL")
+        or ""
+    )
+    digest = hashlib.sha256()
+    for part in (PROMPT_VERSION, provider, model, system, user):
+        digest.update(part.encode("utf-8"))
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def _cache_get(key: str) -> str | None:
+    if ENRICH_CACHE_DIR is None:
+        return None
+    try:
+        path = ENRICH_CACHE_DIR / f"{key}.json"
+        if path.is_file():
+            return path.read_text(encoding="utf-8")
+    except Exception:  # noqa: BLE001 - cache is best-effort
+        return None
+    return None
+
+
+def _cache_put(key: str, content: str) -> None:
+    if ENRICH_CACHE_DIR is None:
+        return
+    try:
+        ENRICH_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        (ENRICH_CACHE_DIR / f"{key}.json").write_text(content, encoding="utf-8")
+    except Exception:  # noqa: BLE001 - read-only fs (e.g. container) is fine
+        pass
+
+
 def build_llm_report(definition_text: str, base_report: dict) -> dict:
     """Ask the AgentShield agent (LLM) to analyze the definition and overlay its
     findings onto the deterministic skeleton. Raises on any failure so the caller
@@ -476,7 +535,11 @@ def build_llm_report(definition_text: str, base_report: dict) -> dict:
         f"{definition_text}\n"
         "=== AGENT DEFINITION END ==="
     )
-    content = _call_llm(system, user)
+    key = _cache_key(system, user)
+    content = _cache_get(key)
+    if content is None:
+        content = _call_llm(system, user)
+        _cache_put(key, content)
     patch = _extract_json(content)
     if not isinstance(patch, dict):
         raise ValueError("model did not return a JSON object")
