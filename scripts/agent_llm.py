@@ -12,14 +12,15 @@ If the credentials are absent, or the call fails for any reason, callers fall
 back to the deterministic report -- the website never breaks because the model
 is unavailable.
 
-Two interchangeable backends are supported (checked in this order):
+Three interchangeable backends are supported (checked in this order):
 
-1. GitHub Models (free, OpenAI-compatible). Preferred when set:
-       GITHUB_MODELS_TOKEN     a GitHub PAT (kept as a Container App secret).
-                               GITHUB_TOKEN is also accepted as a fallback.
-       GITHUB_MODELS_MODEL     optional; defaults to openai/gpt-4o-mini
-       GITHUB_MODELS_ENDPOINT  optional; defaults to
-                               https://models.github.ai/inference
+1. Azure AI Foundry Model Inference (serverless / partner models). Preferred:
+       AZURE_AI_ENDPOINT   e.g. https://my-foundry.services.ai.azure.com/models
+                           (a bare .services.ai.azure.com base is also accepted;
+                           "/models" is appended automatically)
+       AZURE_AI_KEY        resource key (kept as a Container App secret)
+       AZURE_AI_MODEL      deployed model name, e.g. DeepSeek-V3-0324, Phi-4
+       AZURE_AI_API_VERSION  optional; defaults to 2024-05-01-preview
 
 2. Azure OpenAI:
        AZURE_OPENAI_ENDPOINT      e.g. https://my-aoai.openai.azure.com/
@@ -27,7 +28,13 @@ Two interchangeable backends are supported (checked in this order):
        AZURE_OPENAI_API_KEY       resource key (kept as a Container App secret)
        AZURE_OPENAI_API_VERSION   optional; defaults to 2024-10-21
 
-No third-party dependencies: both REST APIs are called with urllib.
+3. GitHub Models (RETIRED July 2026; kept only for backward compatibility):
+       GITHUB_MODELS_TOKEN     a GitHub PAT (or GITHUB_TOKEN)
+       GITHUB_MODELS_MODEL     optional; defaults to openai/gpt-4o-mini
+       GITHUB_MODELS_ENDPOINT  optional; defaults to
+                               https://models.github.ai/inference
+
+No third-party dependencies: every REST API is called with urllib.
 """
 
 from __future__ import annotations
@@ -44,6 +51,7 @@ ROOT = Path(__file__).resolve().parents[1]
 AGENT_PERSONA = ROOT / ".github" / "agents" / "agentshield.agent.md"
 
 DEFAULT_API_VERSION = "2024-10-21"
+DEFAULT_AI_API_VERSION = "2024-05-01-preview"
 DEFAULT_GH_ENDPOINT = "https://models.github.ai/inference"
 DEFAULT_GH_MODEL = "openai/gpt-4o-mini"
 REQUEST_TIMEOUT_S = 60
@@ -118,6 +126,14 @@ def _github_token() -> str | None:
     return os.environ.get("GITHUB_MODELS_TOKEN") or os.environ.get("GITHUB_TOKEN")
 
 
+def _azure_ai_configured() -> bool:
+    return bool(
+        os.environ.get("AZURE_AI_ENDPOINT")
+        and os.environ.get("AZURE_AI_KEY")
+        and os.environ.get("AZURE_AI_MODEL")
+    )
+
+
 def _azure_configured() -> bool:
     return bool(
         os.environ.get("AZURE_OPENAI_ENDPOINT")
@@ -127,12 +143,18 @@ def _azure_configured() -> bool:
 
 
 def active_provider() -> str | None:
-    """Which backend will be used, if any. GitHub Models takes precedence."""
+    """Which backend will be used, if any.
 
-    if _github_token():
-        return "github"
+    Azure AI Foundry (serverless / Model Inference) is preferred, then Azure
+    OpenAI, then GitHub Models (retired -- kept only for backward compatibility).
+    """
+
+    if _azure_ai_configured():
+        return "azure_ai"
     if _azure_configured():
         return "azure"
+    if _github_token():
+        return "github"
     return None
 
 
@@ -164,6 +186,35 @@ def _post_json(url: str, headers: dict, payload: dict) -> dict:
     )
     with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT_S) as response:
         return json.loads(response.read().decode("utf-8"))
+
+
+def _call_azure_ai(system: str, user: str) -> str:
+    """Azure AI Foundry Model Inference API (serverless / partner models).
+
+    Uses the unified endpoint with the model in the request body and an
+    ``api-key`` header. Works for models such as DeepSeek, Phi, Llama, Mistral
+    deployed as serverless in an Azure AI Foundry project.
+    """
+
+    base = os.environ["AZURE_AI_ENDPOINT"].rstrip("/")
+    if not base.endswith("/models"):
+        base = base + "/models"
+    key = os.environ["AZURE_AI_KEY"]
+    model = os.environ["AZURE_AI_MODEL"]
+    api_version = os.environ.get("AZURE_AI_API_VERSION", DEFAULT_AI_API_VERSION)
+
+    url = f"{base}/chat/completions?api-version={api_version}"
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        "temperature": 0.2,
+        "max_tokens": 4000,
+    }
+    body = _post_json(url, {"api-key": key}, payload)
+    return body["choices"][0]["message"]["content"]
 
 
 def _call_github_models(system: str, user: str) -> str:
@@ -212,6 +263,8 @@ def _call_azure_openai(system: str, user: str) -> str:
 
 def _call_llm(system: str, user: str) -> str:
     provider = active_provider()
+    if provider == "azure_ai":
+        return _call_azure_ai(system, user)
     if provider == "github":
         return _call_github_models(system, user)
     if provider == "azure":
