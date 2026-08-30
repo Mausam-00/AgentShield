@@ -34,6 +34,10 @@ COPY agentshield/ ./agentshield/
 COPY scripts/ ./scripts/
 COPY .github/ ./.github/
 
+# Pinned LLM-enrichment cache: authored-once narratives so the web app and the
+# CLI render byte-identical reports (agent_llm.py resolves ROOT to /app).
+COPY enrichment_cache/ ./enrichment_cache/
+
 # The built website (includes node_modules and .next needed by `next start`).
 COPY --from=web-build /app/agentshield-web ./agentshield-web
 
