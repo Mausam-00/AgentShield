@@ -1,6 +1,6 @@
 # AgentShield AI
 
-<img src="docs/agentshield-logo.svg" alt="AgentShield AI logo" width="360">
+<img src="docs/Thumbnail.jpg" alt="AgentShield AI logo" width="360">
 
 **The Security Control Plane for the Agentic Enterprise**
 
