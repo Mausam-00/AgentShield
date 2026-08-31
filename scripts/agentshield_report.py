@@ -23,6 +23,7 @@ Everything is simulation-only: no network call, nothing executed, no credential.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 from datetime import datetime, timezone
@@ -59,6 +60,61 @@ from agentshield.static_assess import assess_agent_file  # noqa: E402
 
 NOW = datetime.now(timezone.utc)
 CAPS = ["read_definition"]
+
+
+def _live_enabled() -> bool:
+    """Live measurement is opt-in via AGENTSHIELD_LIVE and a configured target.
+
+    Kept off by default so ordinary report generation never sends prompts to a
+    real model (no surprise cost, no egress). When enabled but misconfigured, we
+    fall back to static rather than fail the report.
+    """
+
+    flag = (os.environ.get("AGENTSHIELD_LIVE") or "").strip().lower()
+    if flag not in ("1", "true", "yes", "on"):
+        return False
+    try:
+        from agentshield_live import describe_target_config
+
+        return bool(describe_target_config().get("configured"))
+    except Exception:  # noqa: BLE001 - never let live wiring break the report
+        return False
+
+
+def _redteam_block(subject: str, definition_text: str) -> dict:
+    """Red-team block: measured live lane when enabled, else static inference."""
+
+    if _live_enabled():
+        try:
+            from agentshield_live import build_target_adapter
+            from agentshield_live.pyrit_engine import (
+                PyRITUnavailable,
+                pyrit_available,
+                run_pyrit_redteam,
+            )
+            from agentshield_live.redteam_live import run_live_redteam
+
+            adapter = build_target_adapter(allow_mock=False)
+            if pyrit_available():
+                try:
+                    result = run_pyrit_redteam(
+                        definition_text, adapter, subject=subject
+                    )
+                except PyRITUnavailable:
+                    result = run_live_redteam(
+                        definition_text, adapter, subject=subject
+                    )
+            else:
+                result = run_live_redteam(definition_text, adapter, subject=subject)
+            return redteam_to_report_section(result)
+        except Exception as exc:  # noqa: BLE001 - honest fallback to static
+            print(
+                f"agentshield: live red-team unavailable, using static ({exc})",
+                file=sys.stderr,
+            )
+    return redteam_to_report_section(
+        run_static_redteam(definition_text, subject=subject)
+    )
 
 
 def _iso(dt: datetime) -> str:
@@ -108,7 +164,7 @@ def _responsible_ai_block(subject: str, definition_text: str) -> dict:
     )
     raw = rai_to_report(result, simulation=True)
     a = raw["assurance"]
-    return {
+    block = {
         "posture": a["posture"],
         "score": a["score"],
         "coverage": a["coverage"],
@@ -118,6 +174,26 @@ def _responsible_ai_block(subject: str, definition_text: str) -> dict:
         "findings": raw["findings"],
         "coverage_limitations": raw["coverage_limitations"],
     }
+
+    # When live measurement is enabled, attach a MEASURED content-safety harm
+    # rate (RAI-02/RAI-03) alongside the declared-posture pillars.
+    if _live_enabled():
+        try:
+            from agentshield_live import build_target_adapter
+            from agentshield_live.content_safety_live import (
+                content_safety_to_report,
+                run_content_safety_probe,
+            )
+
+            adapter = build_target_adapter(allow_mock=False)
+            cs = run_content_safety_probe(adapter, subject=subject)
+            block["content_safety"] = content_safety_to_report(cs)
+        except Exception as exc:  # noqa: BLE001 - honest fallback
+            print(
+                f"agentshield: live content-safety unavailable ({exc})",
+                file=sys.stderr,
+            )
+    return block
 
 
 def build_report(agent_path: str) -> dict:
@@ -139,9 +215,7 @@ def build_report(agent_path: str) -> dict:
     workflow = AgentShieldWorkflow()
     result = workflow.observe(request, _identity(), assessment.assurance, _impact())
 
-    redteam = redteam_to_report_section(
-        run_static_redteam(assessment.definition_text, subject=assessment.subject)
-    )
+    redteam = _redteam_block(assessment.subject, assessment.definition_text)
 
     report = workflow_to_report(
         result,
