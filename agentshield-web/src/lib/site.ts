@@ -14,7 +14,6 @@ export const nav: NavItem[] = [
   { label: "Platform", href: "/products" },
   { label: "Dashboard", href: "/#dashboard" },
   { label: "Run the Engine", href: "/#demo" },
-  { label: "Github Repo", href: site.repo, external: true },
   { label: "Contact", href: "/contact" },
 ];
 
