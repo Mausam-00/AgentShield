@@ -81,37 +81,75 @@ def _live_enabled() -> bool:
         return False
 
 
-def _redteam_block(subject: str, definition_text: str) -> dict:
-    """Red-team block: measured live lane when enabled, else static inference."""
+def _gather_live(subject: str, definition_text: str) -> "dict | None":
+    """Run the live lane ONCE, returning all measured blocks (or None).
 
-    if _live_enabled():
-        try:
-            from agentshield_live import build_target_adapter
-            from agentshield_live.pyrit_engine import (
-                PyRITUnavailable,
-                pyrit_available,
-                run_pyrit_redteam,
-            )
-            from agentshield_live.redteam_live import run_live_redteam
+    Building the adapter and executing probes is done a single time here so the
+    red-team and Responsible-AI blocks share the same measurement instead of
+    hitting the model three times. Any failure returns ``None`` so callers fall
+    back to the static lane.
+    """
 
-            adapter = build_target_adapter(allow_mock=False)
-            if pyrit_available():
-                try:
-                    result = run_pyrit_redteam(
-                        definition_text, adapter, subject=subject
-                    )
-                except PyRITUnavailable:
-                    result = run_live_redteam(
-                        definition_text, adapter, subject=subject
-                    )
-            else:
-                result = run_live_redteam(definition_text, adapter, subject=subject)
-            return redteam_to_report_section(result)
-        except Exception as exc:  # noqa: BLE001 - honest fallback to static
-            print(
-                f"agentshield: live red-team unavailable, using static ({exc})",
-                file=sys.stderr,
+    if not _live_enabled():
+        return None
+    try:
+        from agentshield_live import build_target_adapter
+        from agentshield_live.content_safety_live import (
+            content_safety_to_report,
+            run_content_safety_probe,
+        )
+        from agentshield_live.pyrit_engine import (
+            PyRITUnavailable,
+            pyrit_available,
+            run_pyrit_redteam,
+        )
+        from agentshield_live.redteam_live import run_live_redteam
+
+        adapter = build_target_adapter(allow_mock=False)
+
+        if pyrit_available():
+            try:
+                rt = run_pyrit_redteam(definition_text, adapter, subject=subject)
+            except PyRITUnavailable:
+                rt = run_live_redteam(definition_text, adapter, subject=subject)
+        else:
+            rt = run_live_redteam(definition_text, adapter, subject=subject)
+
+        bundle: dict = {
+            "redteam": redteam_to_report_section(rt),
+            "content_safety": content_safety_to_report(
+                run_content_safety_probe(adapter, subject=subject)
+            ),
+            "fairness": None,
+        }
+
+        dataset_path = (os.environ.get("AGENTSHIELD_FAIRNESS_DATASET") or "").strip()
+        if dataset_path:
+            from agentshield_live.fairness import (
+                fairness_to_report,
+                load_fairness_dataset,
+                run_fairness_probe,
             )
+
+            cases = load_fairness_dataset(dataset_path)
+            fr = run_fairness_probe(
+                adapter, cases, subject=subject, system_prompt=definition_text
+            )
+            bundle["fairness"] = fairness_to_report(fr)
+        return bundle
+    except Exception as exc:  # noqa: BLE001 - honest fallback to static
+        print(
+            f"agentshield: live lane unavailable, using static ({exc})",
+            file=sys.stderr,
+        )
+        return None
+
+
+def _redteam_block(subject: str, definition_text: str, live: "dict | None") -> dict:
+    """Red-team block: measured live lane when available, else static inference."""
+
+    if live and live.get("redteam"):
+        return live["redteam"]
     return redteam_to_report_section(
         run_static_redteam(definition_text, subject=subject)
     )
@@ -149,17 +187,41 @@ def _impact():
     )
 
 
-def _responsible_ai_block(subject: str, definition_text: str) -> dict:
+def _responsible_ai_block(
+    subject: str, definition_text: str, live: "dict | None" = None
+) -> dict:
     """Derive an honest, evidence-based Responsible AI block.
 
-    No external RAI evidence (model cards, fairness metrics) is supplied with a
-    bare agent definition, so untested default pillars fail closed and missing
-    pillars lower coverage -- exactly as the protocol requires.
+    Without live measurement, every pillar is unevidenced and the block fails
+    closed (RAI-BLOCK) - honest, since fairness/safety cannot be read from a
+    definition. With the live lane, measured harm rate, canary leakage, and
+    (if a dataset is supplied) fairness disparity are converted into tested
+    pillar maturities so the score reflects observed behaviour.
     """
+
+    measured = False
+    if live:
+        try:
+            from agentshield_live.rai_measured import (
+                any_measured,
+                build_measured_pillars,
+            )
+
+            pillars = build_measured_pillars(
+                content_safety=live.get("content_safety"),
+                redteam=live.get("redteam"),
+                fairness=live.get("fairness"),
+            )
+            measured = any_measured(pillars)
+        except Exception as exc:  # noqa: BLE001 - fall back to static pillars
+            print(f"agentshield: measured RAI unavailable ({exc})", file=sys.stderr)
+            pillars = default_pillars(tested=False)
+    else:
+        pillars = default_pillars(tested=False)
 
     result = evaluate_responsible_ai(
         subject=subject,
-        pillars=default_pillars(tested=False),
+        pillars=pillars,
         definition_text=definition_text,
     )
     raw = rai_to_report(result, simulation=True)
@@ -173,26 +235,15 @@ def _responsible_ai_block(subject: str, definition_text: str) -> dict:
         "pillars": raw["gates"],
         "findings": raw["findings"],
         "coverage_limitations": raw["coverage_limitations"],
+        "evidence_mode": "measured" if measured else "declared",
     }
 
-    # When live measurement is enabled, attach a MEASURED content-safety harm
-    # rate (RAI-02/RAI-03) alongside the declared-posture pillars.
-    if _live_enabled():
-        try:
-            from agentshield_live import build_target_adapter
-            from agentshield_live.content_safety_live import (
-                content_safety_to_report,
-                run_content_safety_probe,
-            )
-
-            adapter = build_target_adapter(allow_mock=False)
-            cs = run_content_safety_probe(adapter, subject=subject)
-            block["content_safety"] = content_safety_to_report(cs)
-        except Exception as exc:  # noqa: BLE001 - honest fallback
-            print(
-                f"agentshield: live content-safety unavailable ({exc})",
-                file=sys.stderr,
-            )
+    # Attach the raw measured sub-blocks for transparency in the report.
+    if live:
+        if live.get("content_safety"):
+            block["content_safety"] = live["content_safety"]
+        if live.get("fairness"):
+            block["fairness"] = live["fairness"]
     return block
 
 
@@ -215,7 +266,10 @@ def build_report(agent_path: str) -> dict:
     workflow = AgentShieldWorkflow()
     result = workflow.observe(request, _identity(), assessment.assurance, _impact())
 
-    redteam = _redteam_block(assessment.subject, assessment.definition_text)
+    # Run the live lane once (if enabled); both blocks share the measurement.
+    live = _gather_live(assessment.subject, assessment.definition_text)
+
+    redteam = _redteam_block(assessment.subject, assessment.definition_text, live)
 
     report = workflow_to_report(
         result,
@@ -230,7 +284,7 @@ def build_report(agent_path: str) -> dict:
     )
 
     report["responsible_ai"] = _responsible_ai_block(
-        assessment.subject, assessment.definition_text
+        assessment.subject, assessment.definition_text, live
     )
     report["subject"]["name"] = assessment.subject
 
