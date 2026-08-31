@@ -65,6 +65,8 @@ export function Navbar() {
                 >
                   <Link
                     href={item.href}
+                    target={item.external ? "_blank" : undefined}
+                    rel={item.external ? "noopener noreferrer" : undefined}
                     className={cn(
                       "flex items-center gap-1 rounded-full px-4 py-2 text-sm font-medium transition-colors",
                       pathname === item.href

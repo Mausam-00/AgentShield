@@ -1,5 +1,5 @@
 export type NavChild = { label: string; href: string; desc: string };
-export type NavItem = { label: string; href: string; children?: NavChild[] };
+export type NavItem = { label: string; href: string; external?: boolean; children?: NavChild[] };
 
 export const site = {
   name: "AgentShield AI",
@@ -13,7 +13,7 @@ export const nav: NavItem[] = [
   { label: "Home", href: "/" },
   { label: "Platform", href: "/products" },
   { label: "Dashboard", href: "/#dashboard" },
-  { label: "Run the Engine", href: "/#demo" },
+  { label: "Github Repo", href: site.repo, external: true },
   { label: "Contact", href: "/contact" },
 ];
 

@@ -57,6 +57,8 @@ export function MobileMenu({
                 >
                   <Link
                     href={item.href}
+                    target={item.external ? "_blank" : undefined}
+                    rel={item.external ? "noopener noreferrer" : undefined}
                     onClick={onClose}
                     className="block rounded-xl px-4 py-3 text-lg font-semibold text-white/85 transition-colors hover:bg-white/5"
                   >
