@@ -1,5 +1,6 @@
 import { Reveal } from "@/components/ui/Reveal";
 import { GradientButton } from "@/components/ui/GradientButton";
+import { site } from "@/lib/site";
 
 export function CTASection() {
   return (
@@ -19,8 +20,8 @@ export function CTASection() {
             </p>
             <div className="mt-9 flex flex-wrap justify-center gap-4">
               <GradientButton href="/contact">Book a demo</GradientButton>
-              <GradientButton href="/#demo" variant="ghost" icon={false}>
-                Try the live demo
+              <GradientButton href={site.repo} target="_blank" rel="noopener noreferrer" variant="ghost" icon={false}>
+                Get it on GitHub
               </GradientButton>
             </div>
           </div>

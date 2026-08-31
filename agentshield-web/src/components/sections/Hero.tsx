@@ -8,7 +8,7 @@ import { ParticleField } from "@/components/background/ParticleField";
 import { GradientButton } from "@/components/ui/GradientButton";
 import { Pill } from "@/components/ui/Pill";
 import { StatCounter } from "@/components/ui/StatCounter";
-import { heroStats } from "@/lib/site";
+import { heroStats, site } from "@/lib/site";
 
 const line1 = ["Govern", "every"];
 const line2 = ["autonomous", "action."];
@@ -103,8 +103,8 @@ export function Hero() {
             className="mt-9 flex flex-wrap items-center gap-4"
           >
             <GradientButton href="/contact">Book a demo</GradientButton>
-            <GradientButton href="/#demo" variant="ghost" icon={false}>
-              Try the live demo
+            <GradientButton href={site.repo} target="_blank" rel="noopener noreferrer" variant="ghost" icon={false}>
+              Get it on GitHub
             </GradientButton>
           </motion.div>
 

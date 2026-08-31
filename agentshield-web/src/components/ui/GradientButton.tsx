@@ -13,6 +13,8 @@ type Props = {
   className?: string;
   icon?: boolean;
   onClick?: () => void;
+  target?: string;
+  rel?: string;
 };
 
 export function GradientButton({
@@ -22,6 +24,8 @@ export function GradientButton({
   className,
   icon = true,
   onClick,
+  target,
+  rel,
 }: Props) {
   const base =
     "group relative inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold tracking-tight transition-all duration-300";
@@ -64,7 +68,7 @@ export function GradientButton({
 
   if (href) {
     return (
-      <Link href={href} onClick={onClick} className="inline-flex">
+      <Link href={href} onClick={onClick} target={target} rel={rel} className="inline-flex">
         {inner}
       </Link>
     );

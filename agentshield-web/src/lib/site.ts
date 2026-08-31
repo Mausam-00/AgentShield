@@ -6,13 +6,14 @@ export const site = {
   tagline: "The deterministic security control plane for AI agents",
   email: "hello@agentshield.example",
   location: "Remote-first",
+  repo: "https://github.com/Mausam-00/AgentShield",
 };
 
 export const nav: NavItem[] = [
   { label: "Home", href: "/" },
   { label: "Platform", href: "/products" },
   { label: "Dashboard", href: "/#dashboard" },
-  { label: "Assess", href: "/#demo" },
+  { label: "Run the Engine", href: "/#demo" },
   { label: "Contact", href: "/contact" },
 ];
 

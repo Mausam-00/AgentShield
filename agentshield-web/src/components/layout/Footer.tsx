@@ -67,7 +67,7 @@ export function Footer() {
                 { label: "Why AgentShield", href: "/#usp" },
                 { label: "Efficiency dashboard", href: "/#dashboard" },
                 { label: "Business value", href: "/#value" },
-                { label: "Live demo", href: "/#demo" },
+                { label: "Run the Engine", href: "/#demo" },
               ].map((c) => (
                 <li key={c.href}>
                   <Link
