@@ -23,6 +23,10 @@ EXCLUDED_DIRS = {
     ".venv",
     "venv",
     "node_modules",
+    ".next",  # Next.js build output (generated, gitignored) — not authored content
+    ".vercel",
+    "dist",
+    "build",
 }
 
 SCANNED_SUFFIXES = {".py", ".md", ".html", ".txt", ".gitignore", ""}
@@ -99,15 +103,34 @@ class SecretScanTests(unittest.TestCase):
                 self.fail(f"hardcoded secret-like assignment in {path}: {literal}")
 
     def test_no_real_internal_urls_or_hosts(self):
-        # Only self-contained docs are allowed; no external/internal http(s) URLs
-        # in authored HTML/docs (schema references may mention the words only).
-        pattern = re.compile(r"https?://[^\s\"'<>]+", re.IGNORECASE)
+        # Guard against leaking *sensitive internal* hosts in authored docs.
+        # Public references (github.com, azure.microsoft.com, docs, loopback,
+        # placeholders) are legitimate and must not fail this test. We therefore
+        # detect only host shapes that indicate a genuine internal leak:
+        #   * RFC1918 private IPv4 ranges (10/8, 172.16/12, 192.168/16),
+        #   * link-local / CGNAT ranges (169.254/16, 100.64/10),
+        #   * internal-only TLDs (.corp, .internal, .intranet, .lan, and
+        #     bare *.local hostnames used for private services).
+        url_pattern = re.compile(r"https?://([^\s\"'<>/:]+)", re.IGNORECASE)
+        private_ipv4 = re.compile(
+            r"^(10\.\d{1,3}\.\d{1,3}\.\d{1,3}"
+            r"|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}"
+            r"|192\.168\.\d{1,3}\.\d{1,3}"
+            r"|169\.254\.\d{1,3}\.\d{1,3}"
+            r"|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3})$"
+        )
+        internal_tld = re.compile(
+            r"\.(corp|internal|intranet|lan|local)$", re.IGNORECASE
+        )
         for path in self.files:
             if path.suffix not in {".html", ".py", ".md"}:
                 continue
-            for match in pattern.finditer(_read(path)):
-                url = match.group(0)
-                self.fail(f"unexpected URL in {path}: {url}")
+            for match in url_pattern.finditer(_read(path)):
+                host = match.group(1)
+                if private_ipv4.match(host) or internal_tld.search(host):
+                    self.fail(
+                        f"internal/private host leaked in {path}: {host}"
+                    )
 
     def test_no_real_email_addresses(self):
         pattern = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")

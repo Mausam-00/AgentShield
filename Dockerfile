@@ -46,6 +46,11 @@ ENV AGENTSHIELD_PYTHON=python3
 ENV PORT=3000
 EXPOSE 3000
 
+# Run as an unprivileged user. The engine writes only to per-request temp dirs
+# under /tmp, so the app tree can stay owned by root and read-only to this user.
+RUN useradd --system --create-home --uid 10001 agentshield
+USER agentshield
+
 # `next start` runs with cwd = /app/agentshield-web, so the route resolves the
 # repo root at /app and finds scripts/agentshield_report.py + agentshield/.
 WORKDIR /app/agentshield-web

@@ -12,38 +12,36 @@ module makes that claim testable.
 
 from __future__ import annotations
 
+import hashlib
+import inspect
 from dataclasses import dataclass
 from typing import Callable
 
 from .models import Decision, canonical_hash
-from .policy import POLICY_VERSION
+from . import policy as _policy
+from .policy import CONTROL_CATALOGUE, POLICY_VERSION
 
-# The versioned control catalogue, mirrored here as the deterministic contract.
-# (control_id, reason_code, decision, tier) - the tuple that must not change
-# without a policy-version bump.
-CONTROL_CATALOGUE: list[tuple[str, str, str, str]] = [
-    ("ASP-001", "IDENTITY_UNKNOWN", "DENY", "deny"),
-    ("ASP-002", "LIFECYCLE", "DENY", "deny"),
-    ("ASP-003", "BLOCK_POSTURE_WRITE", "DENY", "deny"),
-    ("ASP-004", "UNRESOLVED_CRITICAL_FINDING", "DENY", "deny"),
-    ("ASP-005", "OUT_OF_SCOPE", "DENY", "deny"),
-    ("ASP-006", "APPROVAL_REJECTED_OR_EXPIRED", "DENY", "deny"),
-    ("ASP-007", "POLICY_ENGINE_FAILURE", "DENY", "deny"),
-    ("ASP-008", "ADAPTER_FAILURE", "DENY", "deny"),
-    ("ASP-009", "OBSERVED_DEVIATION", "DENY", "deny"),
-    ("ASP-010", "REVIEW_STATE_WRITE", "ESCALATE", "escalate"),
-    ("ASP-011", "STALE_ASSURANCE_PROD_WRITE", "ESCALATE", "escalate"),
-    ("ASP-012", "MISSING_HIGH_RISK_EVIDENCE", "ESCALATE", "escalate"),
-    ("ASP-013", "TOOL_MANIFEST_CHANGED", "ESCALATE", "escalate"),
-    ("ASP-014", "TIER_ZERO_OR_IDENTITY", "ESCALATE", "escalate"),
-    ("ASP-015", "DESTRUCTIVE_OR_IRREVERSIBLE", "APPROVE", "approve"),
-    ("ASP-016", "PRODUCTION_WRITE", "APPROVE", "approve"),
-    ("ASP-017", "SECURITY_SENSITIVE_CHANGE", "APPROVE", "approve"),
-    ("ASP-018", "HIGH_DATA_SENSITIVITY", "APPROVE", "approve"),
-    ("ASP-019", "FLEET_WIDE_CHANGE", "APPROVE", "approve"),
-    ("ASP-020", "LARGE_REVERSIBLE_BATCHABLE", "TRANSFORM", "transform"),
-    ("ASP-021", "READ_ONLY_IN_SCOPE", "ALLOW", "allow"),
-]
+
+def _policy_logic_fingerprint() -> str:
+    """SHA-256 over the *actual* source of the decision logic.
+
+    Hashing the source of :func:`evaluate_policy` (plus the private helpers it
+    depends on) means any edit to a decision - changing a control's outcome,
+    reordering precedence, adding or removing a branch - alters the bundle
+    hash. This closes the gap where a hand-mirrored catalogue could drift from
+    the real logic while the fingerprint stayed constant.
+    """
+
+    sources: list[str] = []
+    for name in sorted(dir(_policy)):
+        obj = getattr(_policy, name)
+        if inspect.isfunction(obj) and obj.__module__ == _policy.__name__:
+            try:
+                sources.append(inspect.getsource(obj))
+            except (OSError, TypeError):  # pragma: no cover - defensive
+                sources.append(f"<unavailable:{name}>")
+    joined = "\n".join(sources)
+    return hashlib.sha256(joined.encode("utf-8")).hexdigest()
 
 
 @dataclass
@@ -56,10 +54,21 @@ class ReplayReport:
 
 
 def policy_bundle_hash() -> str:
-    """Stable fingerprint of the versioned policy contract."""
+    """Stable fingerprint of the versioned policy contract *and* its logic.
+
+    The hash binds three things together: the policy version, the authoritative
+    control catalogue (single-sourced from :mod:`agentshield.policy`), and a
+    fingerprint of the real decision-logic source. Changing any one of them
+    changes the bundle hash, so the fingerprint cannot silently diverge from the
+    code that actually authorizes actions.
+    """
 
     return canonical_hash(
-        {"policy_version": POLICY_VERSION, "controls": CONTROL_CATALOGUE}
+        {
+            "policy_version": POLICY_VERSION,
+            "controls": CONTROL_CATALOGUE,
+            "logic_fingerprint": _policy_logic_fingerprint(),
+        }
     )
 
 

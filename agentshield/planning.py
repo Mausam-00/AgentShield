@@ -22,15 +22,49 @@ class SafetyInvariantError(Exception):
     """Raised when a requested transformation would violate a safety invariant."""
 
 
-# Operations that must never be silently swapped for their dangerous inverse.
-FORBIDDEN_SUBSTITUTIONS = {
-    "add_disk": "remove_disk",
-    "provision_server": "decommission_server",
+# Operations that must never be silently swapped for a dangerous inverse. Each
+# safe/constructive operation maps to the set of destructive operations it must
+# never be transformed into without the requester's explicit intent. These are
+# hard invariants: matching a pair raises ``SafetyInvariantError``.
+FORBIDDEN_SUBSTITUTIONS: dict[str, set[str]] = {
+    # Compute / infrastructure lifecycle
+    "add_disk": {"remove_disk", "delete_disk", "detach_disk", "wipe_disk"},
+    "attach_disk": {"detach_disk", "remove_disk", "delete_disk"},
+    "provision_server": {"decommission_server", "delete_server", "destroy_server",
+                         "terminate_instance"},
+    "start_instance": {"stop_instance", "terminate_instance", "delete_instance"},
+    "create_vm": {"delete_vm", "destroy_vm", "deallocate_vm"},
+    "scale_up": {"scale_down", "scale_to_zero"},
+    # Data / storage
+    "create_table": {"drop_table", "truncate_table", "delete_table"},
+    "create_database": {"drop_database", "delete_database"},
+    "create_snapshot": {"delete_snapshot"},
+    "create_backup": {"delete_backup", "disable_backup", "purge_backup"},
+    "enable_backup": {"disable_backup", "delete_backup"},
+    "write_record": {"delete_record", "purge_record"},
+    "restore": {"delete", "purge", "wipe"},
+    # Identity / access / security
+    "grant_access": {"revoke_access", "remove_access", "deny_access"},
+    "create_user": {"delete_user", "disable_user", "deprovision_user"},
+    "enable_user": {"disable_user", "delete_user"},
+    "add_role": {"remove_role", "revoke_role"},
+    "add_key": {"revoke_key", "delete_key", "rotate_out_key"},
+    "enable_mfa": {"disable_mfa", "remove_mfa"},
+    "enable_logging": {"disable_logging", "delete_logs", "purge_logs"},
+    "enable_encryption": {"disable_encryption", "remove_encryption"},
+    "close_firewall": {"open_firewall"},
+    "block_traffic": {"allow_traffic"},
+    "quarantine": {"release", "unquarantine"},
 }
 
-# Substitutions allowed only when the requester explicitly asked for them.
-EXPLICIT_ONLY_SUBSTITUTIONS = {
-    "apply_patch": "uninstall_patch",
+# Substitutions allowed only when the requester explicitly asked for them. These
+# are legitimate reversals in some workflows, but must never happen implicitly.
+EXPLICIT_ONLY_SUBSTITUTIONS: dict[str, set[str]] = {
+    "apply_patch": {"uninstall_patch", "rollback_patch"},
+    "deploy": {"rollback", "undeploy"},
+    "upgrade": {"downgrade", "rollback"},
+    "enable_feature": {"disable_feature"},
+    "install": {"uninstall"},
 }
 
 
@@ -55,14 +89,14 @@ def assert_invariants(
     """Guard against dangerous operation substitution."""
 
     if requested_action in FORBIDDEN_SUBSTITUTIONS:
-        if planned_action == FORBIDDEN_SUBSTITUTIONS[requested_action]:
+        if planned_action in FORBIDDEN_SUBSTITUTIONS[requested_action]:
             raise SafetyInvariantError(
                 f"'{requested_action}' must never become '{planned_action}'."
             )
 
     if requested_action in EXPLICIT_ONLY_SUBSTITUTIONS:
         if (
-            planned_action == EXPLICIT_ONLY_SUBSTITUTIONS[requested_action]
+            planned_action in EXPLICIT_ONLY_SUBSTITUTIONS[requested_action]
             and not explicit_request
         ):
             raise SafetyInvariantError(

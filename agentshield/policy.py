@@ -34,6 +34,38 @@ from .models import (
 DEFAULT_ASSURANCE_MAX_AGE_DAYS = 30.0
 
 
+# Authoritative versioned control catalogue. This is the single source of truth
+# for the deterministic contract: every control emitted by ``evaluate_policy``
+# is declared here as ``(control_id, reason_code, decision, tier)``. The
+# determinism layer fingerprints this table *and* the source of
+# ``evaluate_policy`` (see :mod:`agentshield.determinism`), so neither the
+# declared contract nor the decision logic can change without altering the
+# policy bundle hash.
+CONTROL_CATALOGUE: list[tuple[str, str, str, str]] = [
+    ("ASP-001", "IDENTITY_UNKNOWN", "DENY", "deny"),
+    ("ASP-002", "LIFECYCLE", "DENY", "deny"),
+    ("ASP-003", "BLOCK_POSTURE_WRITE", "DENY", "deny"),
+    ("ASP-004", "UNRESOLVED_CRITICAL_FINDING", "DENY", "deny"),
+    ("ASP-005", "OUT_OF_SCOPE", "DENY", "deny"),
+    ("ASP-006", "APPROVAL_REJECTED_OR_EXPIRED", "DENY", "deny"),
+    ("ASP-007", "POLICY_ENGINE_FAILURE", "DENY", "deny"),
+    ("ASP-008", "ADAPTER_FAILURE", "DENY", "deny"),
+    ("ASP-009", "OBSERVED_DEVIATION", "DENY", "deny"),
+    ("ASP-010", "REVIEW_STATE_WRITE", "ESCALATE", "escalate"),
+    ("ASP-011", "STALE_ASSURANCE_PROD_WRITE", "ESCALATE", "escalate"),
+    ("ASP-012", "MISSING_HIGH_RISK_EVIDENCE", "ESCALATE", "escalate"),
+    ("ASP-013", "TOOL_MANIFEST_CHANGED", "ESCALATE", "escalate"),
+    ("ASP-014", "TIER_ZERO_OR_IDENTITY", "ESCALATE", "escalate"),
+    ("ASP-015", "DESTRUCTIVE_OR_IRREVERSIBLE", "APPROVE", "approve"),
+    ("ASP-016", "PRODUCTION_WRITE", "APPROVE", "approve"),
+    ("ASP-017", "SECURITY_SENSITIVE_CHANGE", "APPROVE", "approve"),
+    ("ASP-018", "HIGH_DATA_SENSITIVITY", "APPROVE", "approve"),
+    ("ASP-019", "FLEET_WIDE_CHANGE", "APPROVE", "approve"),
+    ("ASP-020", "LARGE_REVERSIBLE_BATCHABLE", "TRANSFORM", "transform"),
+    ("ASP-021", "READ_ONLY_IN_SCOPE", "ALLOW", "allow"),
+]
+
+
 @dataclass
 class PolicyConfig:
     version: str = POLICY_VERSION
