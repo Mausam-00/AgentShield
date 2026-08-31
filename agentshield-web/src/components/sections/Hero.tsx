@@ -102,8 +102,7 @@ export function Hero() {
             transition={{ duration: 0.8, delay: 0.68 }}
             className="mt-9 flex flex-wrap items-center gap-4"
           >
-            <GradientButton href="/contact">Book a demo</GradientButton>
-            <GradientButton href={site.repo} target="_blank" rel="noopener noreferrer" variant="ghost" icon={false}>
+            <GradientButton href={site.repo} target="_blank" rel="noopener noreferrer">
               Get it on GitHub
             </GradientButton>
           </motion.div>

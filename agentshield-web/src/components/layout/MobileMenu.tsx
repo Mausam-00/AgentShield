@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { nav } from "@/lib/site";
+import { nav, site } from "@/lib/site";
 import { Icon } from "@/components/ui/Icon";
 import { GradientButton } from "@/components/ui/GradientButton";
 
@@ -83,8 +83,8 @@ export function MobileMenu({
             </nav>
 
             <div className="mt-auto pt-6">
-              <GradientButton href="/contact" className="w-full">
-                Book a demo
+              <GradientButton href={site.repo} target="_blank" rel="noopener noreferrer" className="w-full">
+                GitHub
               </GradientButton>
             </div>
           </motion.div>

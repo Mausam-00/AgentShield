@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { nav } from "@/lib/site";
+import { nav, site } from "@/lib/site";
 import { cn } from "@/lib/utils";
 import { GradientButton } from "@/components/ui/GradientButton";
 import { Icon } from "@/components/ui/Icon";
@@ -134,7 +134,7 @@ export function Navbar() {
 
             <div className="flex items-center gap-3">
               <div className="hidden lg:block">
-                <GradientButton href="/contact">Book a demo</GradientButton>
+                <GradientButton href={site.repo} target="_blank" rel="noopener noreferrer">GitHub</GradientButton>
               </div>
               <button
                 aria-label="Open menu"
