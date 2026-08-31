@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { Icon } from "@/components/ui/Icon";
+import { AssessProcessing } from "@/components/ui/AssessProcessing";
 import { cn } from "@/lib/utils";
 
 type Summary = {
@@ -217,10 +218,8 @@ export function AssessConsole() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="flex h-[300px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/10 text-sm text-white/45"
                 >
-                  <Icon name="Loader2" className="h-6 w-6 animate-spin text-neon-cyan" />
-                  Running the seven-gate assessment…
+                  <AssessProcessing />
                 </motion.div>
               ) : error ? (
                 <motion.div
