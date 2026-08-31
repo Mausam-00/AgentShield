@@ -294,12 +294,16 @@ def build_report(agent_path: str) -> dict:
     # Optional: let the AgentShield agent (Azure OpenAI) author the analysis,
     # overlaying its findings onto this validated deterministic skeleton. Any
     # failure falls back to the deterministic report so the site never breaks.
+    enrichment = {"status": "deterministic"}
     if agent_llm.llm_available():
         try:
             report = agent_llm.build_llm_report(assessment.definition_text, report)
+            enrichment = dict(agent_llm.LAST_ENRICHMENT) or {"status": "unknown"}
         except Exception as exc:  # noqa: BLE001 - deterministic fallback
             print(f"agentshield: LLM enrichment skipped ({exc})", file=sys.stderr)
+            enrichment = {"status": "error", "detail": type(exc).__name__}
 
+    report["_meta_enrichment"] = enrichment
     return report
 
 
@@ -309,7 +313,7 @@ def _snapshot_cache() -> set[Path]:
     cache_dir = getattr(agent_llm, "ENRICH_CACHE_DIR", None)
     if not cache_dir or not Path(cache_dir).is_dir():
         return set()
-    return set(Path(cache_dir).glob("*.json"))
+    return set(Path(cache_dir).rglob("*.json"))
 
 
 def _commit_new_cache(new_files: set[Path], subject: str) -> None:
@@ -361,6 +365,9 @@ def generate(
     before = _snapshot_cache() if commit_cache else set()
     report = build_report(agent_path)
 
+    # Pop private telemetry before rendering so the report JSON stays clean.
+    enrichment = report.pop("_meta_enrichment", {"status": "unknown"})
+
     with tempfile.NamedTemporaryFile(
         "w", suffix=".json", delete=False, encoding="utf-8"
     ) as handle:
@@ -384,6 +391,7 @@ def generate(
         "defense_coverage": report["redteam"].get("defense_coverage"),
         "residual_exposure": report["redteam"].get("residual_exposure"),
         "rai_posture": report["responsible_ai"]["posture"],
+        "enrichment": enrichment,
         "html_path": html_path,
     }
     return html_path, summary

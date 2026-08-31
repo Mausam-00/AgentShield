@@ -32,6 +32,7 @@ type EngineSummary = {
   defense_coverage: number | null;
   residual_exposure: number | null;
   rai_posture: string;
+  enrichment?: { status?: string; model?: string; prompt_version?: string; cache_key?: string };
   html_path: string;
 };
 
@@ -107,7 +108,18 @@ export async function POST(req: NextRequest) {
     const summary = JSON.parse(line) as EngineSummary;
     const html = await readFile(outPath, "utf-8");
 
-    return NextResponse.json({ summary, html });
+    // Surface how the LLM narrative was sourced (cache hit vs a fresh, possibly
+    // divergent model call) so web/CLI parity issues are observable at a glance.
+    const enrichStatus = summary.enrichment?.status ?? "unknown";
+    console.log(
+      `[agentshield-assess] subject="${summary.subject}" enrichment=${enrichStatus} ` +
+        `model=${summary.enrichment?.model ?? "-"} prompt=${summary.enrichment?.prompt_version ?? "-"}`,
+    );
+
+    return NextResponse.json(
+      { summary, html },
+      { headers: { "X-Enrichment": enrichStatus } },
+    );
   } catch (err) {
     // Log the full diagnostic server-side only; never leak internal paths,
     // stack traces, or engine stderr to the client.

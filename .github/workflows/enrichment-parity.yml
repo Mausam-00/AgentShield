@@ -1,0 +1,71 @@
+name: Enrichment parity gate
+
+# Guarantees that the committed LLM-enrichment cache stays in lockstep with the
+# report pipeline so the website (container image) and the CLI render byte-identical
+# narratives. The gate assesses a committed fixture agent whose enrichment entry is
+# committed under enrichment_cache/<PROMPT_VERSION>/. It runs with NO real Azure
+# credentials: a genuine cache hit short-circuits before any network call, so if the
+# cache key drifts (prompt/model/provider change, or a missing/misplaced entry) the
+# run degrades to "deterministic"/"miss" and this job fails.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/**"
+      - "agentshield/**"
+      - "enrichment_cache/**"
+      - ".github/agents/agentshield.agent.md"
+      - ".github/workflows/enrichment-parity.yml"
+  pull_request:
+    paths:
+      - "scripts/**"
+      - "agentshield/**"
+      - "enrichment_cache/**"
+      - ".github/agents/agentshield.agent.md"
+      - ".github/workflows/enrichment-parity.yml"
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Assert enrichment cache hit (offline)
+        env:
+          PYTHONIOENCODING: utf-8
+          # Fake creds make active_provider() == azure_ai and model == gpt-oss-120b so
+          # the cache key matches the committed entry. The endpoint is unreachable on
+          # purpose: a real cache hit never calls it. A miss would try to and fail.
+          AZURE_AI_ENDPOINT: "https://parity-gate.invalid"
+          AZURE_AI_KEY: "parity-gate-not-a-real-key"
+          AZURE_AI_MODEL: "gpt-oss-120b"
+        run: |
+          python scripts/agentshield_report.py \
+            .github/agents/agentshield.agent.md \
+            "${RUNNER_TEMP}/parity.html" | tee "${RUNNER_TEMP}/engine.out"
+          python - "${RUNNER_TEMP}/engine.out" <<'PY'
+          import json, sys
+          lines = [l for l in open(sys.argv[1], encoding="utf-8").read().splitlines() if l.strip()]
+          summary = json.loads(lines[-1])
+          enrich = summary.get("enrichment", {})
+          status = enrich.get("status")
+          print(f"enrichment status = {status!r} (key={enrich.get('cache_key')})")
+          if status != "hit":
+              print(
+                  "PARITY GATE FAILED: expected a committed enrichment cache hit but got "
+                  f"{status!r}. The web and CLI reports would diverge. Regenerate/commit "
+                  "the enrichment_cache entry for this fixture (run the report with "
+                  "--commit-cache) and ensure it lives under enrichment_cache/<PROMPT_VERSION>/.",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+          print("PARITY GATE PASSED: web/CLI enrichment narrative is cache-pinned.")
+          PY

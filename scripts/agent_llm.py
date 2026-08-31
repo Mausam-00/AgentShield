@@ -67,6 +67,10 @@ ENRICH_CACHE_DIR = (
 )
 PROMPT_VERSION = "v1"
 
+# Populated by build_llm_report on each run: {status: hit|miss, provider, model,
+# prompt_version, cache_key}. Best-effort telemetry for callers/headers.
+LAST_ENRICHMENT: dict = {}
+
 DEFAULT_API_VERSION = "2024-10-21"
 DEFAULT_AI_API_VERSION = "2024-05-01-preview"
 DEFAULT_GH_ENDPOINT = "https://models.github.ai/inference"
@@ -500,11 +504,25 @@ def _cache_key(system: str, user: str) -> str:
     return digest.hexdigest()
 
 
-def _cache_get(key: str) -> str | None:
+def _cache_path(key: str) -> "Path | None":
+    """Location of a cache entry, namespaced by prompt version.
+
+    Entries live under ``<cache>/<PROMPT_VERSION>/<key>.json`` so that bumping
+    ``PROMPT_VERSION`` starts a fresh generation and the whole previous
+    generation can be pruned by deleting one directory - stale keys never
+    accumulate at the top level.
+    """
+
     if ENRICH_CACHE_DIR is None:
         return None
+    return ENRICH_CACHE_DIR / PROMPT_VERSION / f"{key}.json"
+
+
+def _cache_get(key: str) -> str | None:
+    path = _cache_path(key)
+    if path is None:
+        return None
     try:
-        path = ENRICH_CACHE_DIR / f"{key}.json"
         if path.is_file():
             return path.read_text(encoding="utf-8")
     except Exception:  # noqa: BLE001 - cache is best-effort
@@ -513,11 +531,12 @@ def _cache_get(key: str) -> str | None:
 
 
 def _cache_put(key: str, content: str) -> None:
-    if ENRICH_CACHE_DIR is None:
+    path = _cache_path(key)
+    if path is None:
         return
     try:
-        ENRICH_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        (ENRICH_CACHE_DIR / f"{key}.json").write_text(content, encoding="utf-8")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
     except Exception:  # noqa: BLE001 - read-only fs (e.g. container) is fine
         pass
 
@@ -537,9 +556,25 @@ def build_llm_report(definition_text: str, base_report: dict) -> dict:
     )
     key = _cache_key(system, user)
     content = _cache_get(key)
+    cache_hit = content is not None
     if content is None:
         content = _call_llm(system, user)
         _cache_put(key, content)
+    # Record how this narrative was sourced so callers can surface it (e.g. an
+    # X-Enrichment header) and diagnose web/CLI divergence at a glance.
+    LAST_ENRICHMENT.clear()
+    LAST_ENRICHMENT.update(
+        status="hit" if cache_hit else "miss",
+        provider=active_provider() or "none",
+        model=(
+            os.environ.get("AZURE_AI_MODEL")
+            or os.environ.get("AZURE_OPENAI_DEPLOYMENT")
+            or os.environ.get("GITHUB_MODELS_MODEL")
+            or ""
+        ),
+        prompt_version=PROMPT_VERSION,
+        cache_key=key,
+    )
     patch = _extract_json(content)
     if not isinstance(patch, dict):
         raise ValueError("model did not return a JSON object")
