@@ -230,6 +230,7 @@ def render(width: int, plain: bool) -> str:
     # Metadata + version (genuine project version).
     out.append("")
     out.append(centre(paint.fg(f"Deterministic governance for AI agents  {dot}  Simulation-first", DGREY), width))
+    out.append(centre(paint.fg(f"BlastRadius: capability & impact  {dot}  ChangeShield: safe change", PSGOLD), width))
     out.append(centre(paint.fg(f"v{version}", GREY), width))
 
     out.append("")

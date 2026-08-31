@@ -30,6 +30,8 @@ import {
   Download,
   Loader2,
   AlertTriangle,
+  ShieldAlert,
+  Target,
   type LucideIcon,
 } from "lucide-react";
 
@@ -63,6 +65,8 @@ const map: Record<string, LucideIcon> = {
   Download,
   Loader2,
   AlertTriangle,
+  ShieldAlert,
+  Target,
 };
 
 export function Icon({

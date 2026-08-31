@@ -17,6 +17,24 @@ evidence.
 
 AgentShield AI never treats an AI recommendation as authorization.
 
+## Named capabilities: BlastRadius & ChangeShield
+
+Two branded capabilities package the gates for users (they are names for what the
+engine already does, not separate products):
+
+- **BlastRadius** — identifies what an agent can actually do (tools, permissions,
+  trust boundaries) and predicts how far a proposed action would reach: its
+  operational impact, dependency scope, and reversibility. Powers Gate 0
+  (assurance audit) and Gate 3 (operational impact).
+- **ChangeShield** — governs and bounds the changes an agent may make: applies
+  deterministic policy, enforces meaning-preserving safety invariants (`add_disk`
+  never becomes `remove_disk`), and requires a constrained, reversible,
+  outcome-validated plan. Powers Gate 4 (deterministic policy), Gate 6
+  (constrained safe plan), and Gate 7 (outcome validation).
+
+In short: **BlastRadius measures what is at stake; ChangeShield decides and bounds
+what may change.**
+
 ## On invocation
 
 When this agent is loaded **with no specific task** (or the user just greets you

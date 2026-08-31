@@ -123,7 +123,7 @@ def render(out_path: str, scale: int = 2) -> str:
     # Count the rendered lines to size the canvas height.
     n_lines = (
         len(WORDMARK) + 1              # wordmark + AI
-        + 2 + 2 + 2                    # tagline, workflow, metadata+version (blocks)
+        + 2 + 2 + 3                    # tagline, workflow, metadata+caps+version (blocks)
         + 2                            # rule + heading
         + len(MENU) * 2                # menu options
         + 2 + 1 + 2 + 1                # rule, badges, quick/reminder, reply
@@ -177,6 +177,9 @@ def render(out_path: str, scale: int = 2) -> str:
     # Metadata + version.
     meta = "Deterministic governance for AI agents  ·  Simulation-first"
     draw.text((centre_x(meta, reg), y), meta, font=reg, fill=GREY)
+    y += line_h
+    caps = "BlastRadius: capability & impact  ·  ChangeShield: safe change"
+    draw.text((centre_x(caps, reg), y), caps, font=reg, fill=YELLOW)
     y += line_h
     ver = f"v{version}"
     draw.text((centre_x(ver, reg), y), ver, font=reg, fill=DGREY)

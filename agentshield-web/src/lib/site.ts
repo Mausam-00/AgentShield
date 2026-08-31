@@ -34,6 +34,16 @@ export const bandStats = [
 
 export const features = [
   {
+    icon: "Target",
+    title: "BlastRadius — capability & impact mapping",
+    body: "Identifies exactly what an agent can do — its tools, permissions and trust boundaries — and predicts how far any action would reach before it runs.",
+  },
+  {
+    icon: "ShieldAlert",
+    title: "ChangeShield — safe-change enforcement",
+    body: "Governs the changes an agent may make: deterministic policy, meaning-preserving invariants and constrained, reversible plans so no unsafe change reaches a target.",
+  },
+  {
     icon: "ShieldCheck",
     title: "Deterministic policy engine",
     body: "Versioned controls return exactly one verdict with reason codes. No model can weaken a hard control.",
@@ -151,10 +161,10 @@ export const gates = [
   { id: "G0", name: "Assurance audit", body: "Design-time posture: PASS, WARN or BLOCK." },
   { id: "G1", name: "Action interception", body: "Hold the proposed action before execution." },
   { id: "G2", name: "Identity & context", body: "Resolve who is acting and under what trust." },
-  { id: "G3", name: "Operational impact", body: "Predict blast radius and reversibility." },
-  { id: "G4", name: "Deterministic policy", body: "The only gate that authorizes. Fails closed." },
+  { id: "G3", name: "Operational impact", body: "BlastRadius: predict capability reach, blast radius and reversibility." },
+  { id: "G4", name: "Deterministic policy", body: "ChangeShield: the only gate that authorizes. Fails closed." },
   { id: "G5", name: "Human approval", body: "Bounded approval bound to hash and expiry." },
-  { id: "G6", name: "Constrained plan", body: "Scope narrowing, checkpoints and rollback." },
+  { id: "G6", name: "Constrained plan", body: "ChangeShield: scope narrowing, checkpoints and rollback." },
   { id: "G7", name: "Outcome validation", body: "Verify results and preserve evidence." },
 ];
 

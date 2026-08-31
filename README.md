@@ -118,6 +118,31 @@ context &rarr; 3. Operational impact &rarr; 4. Deterministic policy &rarr;
 See the architecture diagram above for the visual workflow and
 `Protocols/AGENTSHIELD-PROTOCOL.md` for authoritative behavior.
 
+## Named capabilities: BlastRadius & ChangeShield
+
+Two of the seven gates are packaged as named capabilities. They are not separate
+products &mdash; they are the branded, user-facing names for capabilities the
+engine already implements.
+
+- **BlastRadius** &mdash; *"what can this agent do, and how far does a change
+  reach?"* BlastRadius identifies an agent's real capabilities (tools,
+  permissions, trust boundaries) and predicts the operational reach, dependency
+  scope, and reversibility of a proposed action. It powers **Gate 0 (assurance
+  audit)** and **Gate 3 (operational impact)**.
+  &rarr; `agentshield/assurance.py`, `agentshield/impact.py`
+
+- **ChangeShield** &mdash; *"which changes may the agent actually make?"*
+  ChangeShield governs and constrains the changes an agent performs: it applies
+  deterministic policy, enforces meaning-preserving safety invariants
+  (`add_disk` never becomes `remove_disk`), and requires a constrained,
+  reversible plan validated against the outcome &mdash; so no unsafe change
+  reaches a target. It powers **Gate 4 (deterministic policy)**, **Gate 6
+  (constrained safe plan)**, and **Gate 7 (outcome validation)**.
+  &rarr; `agentshield/policy.py`, `agentshield/planning.py`, `agentshield/validation.py`
+
+Put simply: **BlastRadius measures what is at stake; ChangeShield decides and
+bounds what may change.**
+
 ## Responsible use and limitations
 
 AgentShield AI provides security assurance and governance **support**, not
