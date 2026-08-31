@@ -11,11 +11,13 @@ output:
 
 Usage::
 
-    python scripts/agentshield_report.py AGENT.md [OUTPUT.html]
+    python scripts/agentshield_report.py AGENT.md [OUTPUT.html] [--commit-cache]
 
 ``OUTPUT.html`` may be omitted or a directory, in which case the file is named
 by the ``AgentShield_AI_Report_<AgentName>.html`` convention. A one-line JSON
 summary is printed to stdout for programmatic callers (the website API route).
+Pass ``--commit-cache`` to auto-commit any newly-written ``enrichment_cache``
+entry so the website (container image) and the CLI render identical reports.
 
 Everything is simulation-only: no network call, nothing executed, no credential.
 """
@@ -24,6 +26,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 import tempfile
 from datetime import datetime, timezone
@@ -300,9 +303,62 @@ def build_report(agent_path: str) -> dict:
     return report
 
 
-def generate(agent_path: str, output: str | None) -> tuple[str, dict]:
+def _snapshot_cache() -> set[Path]:
+    """Return the set of enrichment-cache files that exist right now."""
+
+    cache_dir = getattr(agent_llm, "ENRICH_CACHE_DIR", None)
+    if not cache_dir or not Path(cache_dir).is_dir():
+        return set()
+    return set(Path(cache_dir).glob("*.json"))
+
+
+def _commit_new_cache(new_files: set[Path], subject: str) -> None:
+    """Stage and commit only the newly-written cache entries.
+
+    This makes web/CLI report parity automatic: the content-addressed LLM
+    narrative that the CLI just produced is committed so it ships in the
+    container image and the website hits the same cache entry. Only the specific
+    new ``enrichment_cache/*.json`` files are staged - never the whole tree - and
+    the commit is never pushed. Failures (no git, detached tree, read-only fs)
+    are reported but never abort report generation.
+    """
+
+    if not new_files:
+        print("cache: no new enrichment entries to commit.", file=sys.stderr)
+        return
+
+    paths = [str(p) for p in sorted(new_files)]
+    try:
+        subprocess.run(
+            ["git", "-C", str(ROOT), "add", "--", *paths],
+            check=True, capture_output=True, text=True,
+        )
+        message = f"cache: enrichment for {subject}"
+        subprocess.run(
+            ["git", "-C", str(ROOT), "commit", "-m", message, "--", *paths],
+            check=True, capture_output=True, text=True,
+        )
+    except FileNotFoundError:
+        print("cache: git not available; skipped auto-commit.", file=sys.stderr)
+        return
+    except subprocess.CalledProcessError as exc:
+        detail = (exc.stderr or exc.stdout or "").strip()
+        print(f"cache: auto-commit skipped ({detail})", file=sys.stderr)
+        return
+    print(
+        f"cache: committed {len(paths)} new enrichment entr"
+        f"{'y' if len(paths) == 1 else 'ies'}; run 'git push' to redeploy the "
+        "website with matching reports.",
+        file=sys.stderr,
+    )
+
+
+def generate(
+    agent_path: str, output: str | None, *, commit_cache: bool = False
+) -> tuple[str, dict]:
     """Compose and render. Returns (html_path, summary)."""
 
+    before = _snapshot_cache() if commit_cache else set()
     report = build_report(agent_path)
 
     with tempfile.NamedTemporaryFile(
@@ -314,6 +370,10 @@ def generate(agent_path: str, output: str | None) -> tuple[str, dict]:
         html_path = dashboard_report.generate(json_path, output)
     finally:
         Path(json_path).unlink(missing_ok=True)
+
+    if commit_cache:
+        new_files = _snapshot_cache() - before
+        _commit_new_cache(new_files, report["subject"]["name"])
 
     summary = {
         "subject": report["subject"]["name"],
@@ -330,12 +390,17 @@ def generate(agent_path: str, output: str | None) -> tuple[str, dict]:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) < 1:
-        print("usage: agentshield_report.py AGENT.md [OUTPUT.html]", file=sys.stderr)
+    args = [a for a in argv if a != "--commit-cache"]
+    commit_cache = "--commit-cache" in argv
+    if len(args) < 1:
+        print(
+            "usage: agentshield_report.py AGENT.md [OUTPUT.html] [--commit-cache]",
+            file=sys.stderr,
+        )
         return 2
-    agent_path = argv[0]
-    output = argv[1] if len(argv) > 1 else None
-    _, summary = generate(agent_path, output)
+    agent_path = args[0]
+    output = args[1] if len(args) > 1 else None
+    _, summary = generate(agent_path, output, commit_cache=commit_cache)
     print(json.dumps(summary))
     return 0
 

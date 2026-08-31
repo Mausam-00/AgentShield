@@ -45,4 +45,21 @@ jobs:
           targetPort: 3000
           ingress: external
 
+      # Re-assert the LLM-enrichment environment declaratively on every deploy so
+      # an image update can never silently drop it (which would make the website
+      # cache-miss and diverge from the CLI report). AZURE_AI_KEY references the
+      # pre-existing `azure-ai-key` Container App secret, so no secret value is
+      # ever placed in this workflow. The az session is provided by the Azure
+      # Login step above.
+      - name: Ensure LLM enrichment env vars (declarative)
+        run: |
+          az containerapp update \
+            --name agentshield \
+            --resource-group rg-agentshield \
+            --container-name agentshield \
+            --set-env-vars \
+              AZURE_AI_ENDPOINT=https://agentshield-ai.services.ai.azure.com \
+              AZURE_AI_MODEL=gpt-oss-120b \
+              AZURE_AI_KEY=secretref:azure-ai-key
+
 
