@@ -3,11 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ShieldMark } from "@/components/brand/ShieldMark";
-import { ParticleShield } from "@/components/intro/ParticleShield";
 
 const SESSION_KEY = "as_intro_played_v1";
 const GATES = ["G0", "G1", "G2", "G3", "G4", "G5", "G6", "G7"];
-const ASSEMBLE_MS = 1600;
+const ASSEMBLE_MS = 1200;
 const MARK_H = 200;
 
 const TELEMETRY: { label: string; status: string }[] = [
@@ -92,11 +91,12 @@ export function HudIntro() {
       setArmed(GATES.length - 1);
       scheduled.push(setTimeout(finish, 900));
     } else {
-      // Stream boot telemetry so it lands roughly as the shield converges.
+      // Stream boot telemetry, then reveal the logo at the reticle centre.
       TELEMETRY.forEach((_, i) => {
-        schedule(() => setRevealed(i + 1), 300 + i * 230);
-        schedule(() => setResolved(i + 1), 300 + i * 230 + 150);
+        schedule(() => setRevealed(i + 1), 200 + i * 170);
+        schedule(() => setResolved(i + 1), 200 + i * 170 + 120);
       });
+      schedule(handleAssembled, ASSEMBLE_MS);
       const onKey = (e: KeyboardEvent) => {
         if (e.key === "Escape" || e.key === "Enter" || e.key === " ") finish();
       };
@@ -172,23 +172,6 @@ export function HudIntro() {
             exit={{ scale: 0.7, opacity: 0 }}
             transition={{ duration: 0.6, ease: [0.7, 0, 0.84, 0] }}
           >
-            {/* Particle convergence — sized to this box, so it implodes into
-                the exact centre of the reticle where the logo appears */}
-            {!reduce && (
-              <motion.div
-                className="pointer-events-none absolute inset-0"
-                animate={{ opacity: assembled ? 0 : 1 }}
-                transition={{ duration: 0.5, delay: assembled ? 0.15 : 0 }}
-              >
-                <ParticleShield
-                  logoHeight={MARK_H}
-                  assembleMs={ASSEMBLE_MS}
-                  spawnMode="ring"
-                  onAssembled={handleAssembled}
-                />
-              </motion.div>
-            )}
-
             {/* Reticle rings */}
             <svg viewBox="0 0 400 400" className="absolute inset-0 h-full w-full text-neon-cyan">
               <defs>
