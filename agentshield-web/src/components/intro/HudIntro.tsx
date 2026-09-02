@@ -138,22 +138,6 @@ export function HudIntro() {
           <div className="pointer-events-none absolute inset-0 bg-radial-hero opacity-60" />
           <div className="pointer-events-none absolute inset-0 bg-grid-fade opacity-[0.12]" />
 
-          {/* Full-page particle convergence forms the shield inside the HUD */}
-          {!reduce && (
-            <motion.div
-              className="pointer-events-none absolute inset-0"
-              animate={{ opacity: assembled ? 0 : 1 }}
-              transition={{ duration: 0.5, delay: assembled ? 0.15 : 0 }}
-            >
-              <ParticleShield
-                logoHeight={MARK_H}
-                assembleMs={ASSEMBLE_MS}
-                spawnMode="ring"
-                onAssembled={handleAssembled}
-              />
-            </motion.div>
-          )}
-
           {/* Boot telemetry (JARVIS log) */}
           <div className="pointer-events-none absolute left-6 top-6 hidden w-72 font-mono text-[11px] leading-relaxed text-neon-cyan/80 sm:block">
             <div className="mb-2 tracking-[0.3em] text-white/50">AGENTSHIELD SECURE BOOT</div>
@@ -188,6 +172,23 @@ export function HudIntro() {
             exit={{ scale: 0.7, opacity: 0 }}
             transition={{ duration: 0.6, ease: [0.7, 0, 0.84, 0] }}
           >
+            {/* Particle convergence — sized to this box, so it implodes into
+                the exact centre of the reticle where the logo appears */}
+            {!reduce && (
+              <motion.div
+                className="pointer-events-none absolute inset-0"
+                animate={{ opacity: assembled ? 0 : 1 }}
+                transition={{ duration: 0.5, delay: assembled ? 0.15 : 0 }}
+              >
+                <ParticleShield
+                  logoHeight={MARK_H}
+                  assembleMs={ASSEMBLE_MS}
+                  spawnMode="ring"
+                  onAssembled={handleAssembled}
+                />
+              </motion.div>
+            )}
+
             {/* Reticle rings */}
             <svg viewBox="0 0 400 400" className="absolute inset-0 h-full w-full text-neon-cyan">
               <defs>

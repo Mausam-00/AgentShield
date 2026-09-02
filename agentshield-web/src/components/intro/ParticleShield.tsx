@@ -53,25 +53,22 @@ export function ParticleShield({
     const canvas = canvasRef.current;
     if (!canvas) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const W = window.innerWidth;
-    const H = window.innerHeight;
+    const rect = canvas.getBoundingClientRect();
+    const W = Math.round(rect.width) || window.innerWidth;
+    const H = Math.round(rect.height) || window.innerHeight;
     canvas.width = W * dpr;
     canvas.height = H * dpr;
-    canvas.style.width = `${W}px`;
-    canvas.style.height = `${H}px`;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.scale(dpr, dpr);
 
-    // Logo footprint, centred in the viewport.
+    // Logo footprint, centred in the canvas.
     const logoH = Math.min(logoHeight, H * 0.6);
     const logoW = logoH * (VIEW_W / VIEW_H);
     const cx = W / 2;
     const cy = H / 2;
     const originX = cx - logoW / 2;
     const originY = cy - logoH / 2;
-    if (!ctx) return;
-    ctx.scale(dpr, dpr);
 
     // 1) Rasterise silhouette to sample target points.
     const S = 3; // sampling resolution multiplier
