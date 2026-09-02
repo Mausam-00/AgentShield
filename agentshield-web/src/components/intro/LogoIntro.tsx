@@ -82,7 +82,18 @@ export function LogoIntro() {
           {/* Ambient glow */}
           <div className="pointer-events-none absolute inset-0 bg-radial-hero opacity-60" />
 
-          {/* Forge stage */}
+          {/* Full-page particle cloud that assembles the silhouette */}
+          {!reduce && (
+            <motion.div
+              className="pointer-events-none absolute inset-0"
+              animate={{ opacity: assembled ? 0 : 1 }}
+              transition={{ duration: 0.5, delay: assembled ? 0.15 : 0 }}
+            >
+              <ParticleShield logoHeight={MARK_H} assembleMs={ASSEMBLE_MS} onAssembled={handleAssembled} />
+            </motion.div>
+          )}
+
+          {/* Forge stage (crisp mark, centred in the viewport) */}
           <motion.div
             className="relative"
             exit={{ scale: 0.7, y: -40, opacity: 0 }}
@@ -103,16 +114,6 @@ export function LogoIntro() {
               className="relative drop-shadow-[0_0_40px_rgba(79,124,255,0.45)]"
               style={{ height: MARK_H, width: MARK_H * (100 / 118) }}
             >
-              {/* Particle cloud (assembles the silhouette) */}
-              {!reduce && (
-                <motion.div
-                  className="absolute inset-0 grid place-items-center"
-                  animate={{ opacity: assembled ? 0 : 1 }}
-                  transition={{ duration: 0.5, delay: assembled ? 0.15 : 0 }}
-                >
-                  <ParticleShield size={MARK_H} assembleMs={ASSEMBLE_MS} onAssembled={handleAssembled} />
-                </motion.div>
-              )}
               {/* Crisp vector mark crossfades in once converged */}
               <motion.div
                 className="absolute inset-0"
@@ -123,15 +124,14 @@ export function LogoIntro() {
                 <ShieldMark mode="static" strokeWidth={2.2} />
               </motion.div>
             </div>
-          </motion.div>
 
-          {/* Wordmark */}
-          <motion.div
-            className="mt-8 text-center"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: assembled ? 1 : 0, y: assembled ? 0 : 12 }}
-            transition={{ duration: 0.5 }}
-          >
+            {/* Wordmark — anchored below the mark so it never shifts its centre */}
+            <motion.div
+              className="absolute left-1/2 top-full mt-8 w-max -translate-x-1/2 text-center"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: assembled ? 1 : 0, y: assembled ? 0 : 12 }}
+              transition={{ duration: 0.5 }}
+            >
             <div className="font-display text-2xl font-semibold tracking-tight text-white sm:text-3xl">
               AgentShield <span className="text-gradient-neon">AI</span>
             </div>
@@ -161,6 +161,7 @@ export function LogoIntro() {
             >
               {ready || reduce ? "Seven gates armed" : "Arming seven gates…"}
             </motion.div>
+          </motion.div>
           </motion.div>
 
           {/* Skip hint */}

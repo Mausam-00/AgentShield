@@ -36,11 +36,11 @@ function colorFor(fx: number, fy: number) {
 }
 
 export function ParticleShield({
-  size = 300,
-  assembleMs = 1500,
+  logoHeight = 240,
+  assembleMs = 1600,
   onAssembled,
 }: {
-  size?: number;
+  logoHeight?: number;
   assembleMs?: number;
   onAssembled?: () => void;
 }) {
@@ -51,13 +51,23 @@ export function ParticleShield({
     const canvas = canvasRef.current;
     if (!canvas) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const W = size * (VIEW_W / VIEW_H);
-    const H = size;
+    const W = window.innerWidth;
+    const H = window.innerHeight;
     canvas.width = W * dpr;
     canvas.height = H * dpr;
     canvas.style.width = `${W}px`;
     canvas.style.height = `${H}px`;
     const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.scale(dpr, dpr);
+
+    // Logo footprint, centred in the viewport.
+    const logoH = Math.min(logoHeight, H * 0.6);
+    const logoW = logoH * (VIEW_W / VIEW_H);
+    const cx = W / 2;
+    const cy = H / 2;
+    const originX = cx - logoW / 2;
+    const originY = cy - logoH / 2;
     if (!ctx) return;
     ctx.scale(dpr, dpr);
 
@@ -93,34 +103,32 @@ export function ParticleShield({
         if (a > 128) {
           const fx = x / off.width;
           const fy = y / off.height;
-          targets.push({ x: fx * W, y: fy * H, fx, fy });
+          targets.push({ x: originX + fx * logoW, y: originY + fy * logoH, fx, fy });
         }
       }
     }
 
     // Subsample to a performant count.
-    const MAX = 1500;
+    const MAX = 1600;
     const chosen =
       targets.length > MAX
         ? targets.sort(() => Math.random() - 0.5).slice(0, MAX)
         : targets;
 
-    // 2) Build particles spawning from outside the frame.
-    const cx = W / 2;
-    const cy = H / 2;
-    const spread = Math.hypot(W, H);
+    // 2) Build particles spawning from anywhere across the whole page.
     const particles: Particle[] = chosen.map((t) => {
-      const ang = Math.random() * Math.PI * 2;
-      const rad = spread * (0.6 + Math.random() * 0.7);
+      const sx = (Math.random() * 1.3 - 0.15) * W;
+      const sy = (Math.random() * 1.3 - 0.15) * H;
+      const dist = Math.hypot(t.x - sx, t.y - sy);
       return {
-        sx: cx + Math.cos(ang) * rad,
-        sy: cy + Math.sin(ang) * rad,
+        sx,
+        sy,
         tx: t.x,
         ty: t.y,
-        delay: Math.random() * 340,
-        dur: 900 + Math.random() * 320,
+        delay: Math.random() * 300,
+        dur: 850 + dist * 0.18 + Math.random() * 260,
         color: colorFor(t.fx, t.fy),
-        size: 0.9 + Math.random() * 1.3,
+        size: 0.9 + Math.random() * 1.4,
       };
     });
 
@@ -130,9 +138,9 @@ export function ParticleShield({
     const render = (now: number) => {
       const elapsed = now - start;
 
-      // Trail fade.
+      // Trail fade across the whole page.
       ctx.globalCompositeOperation = "source-over";
-      ctx.fillStyle = "rgba(4,6,13,0.32)";
+      ctx.fillStyle = "rgba(4,6,13,0.30)";
       ctx.fillRect(0, 0, W, H);
 
       ctx.globalCompositeOperation = "lighter";
@@ -142,7 +150,7 @@ export function ParticleShield({
         const x = p.sx + (p.tx - p.sx) * e;
         const y = p.sy + (p.ty - p.sy) * e;
         ctx.fillStyle = p.color;
-        ctx.globalAlpha = 0.5 + 0.5 * local;
+        ctx.globalAlpha = 0.4 + 0.6 * local;
         ctx.beginPath();
         ctx.arc(x, y, p.size, 0, Math.PI * 2);
         ctx.fill();
@@ -151,9 +159,9 @@ export function ParticleShield({
 
       if (elapsed >= assembleMs && !doneRef.current) {
         doneRef.current = true;
-        // Convergence flash.
+        // Convergence flash centred on the logo.
         ctx.globalCompositeOperation = "lighter";
-        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, spread * 0.4);
+        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, logoW * 1.6);
         g.addColorStop(0, "rgba(120,190,255,0.55)");
         g.addColorStop(1, "rgba(120,190,255,0)");
         ctx.fillStyle = g;
@@ -170,5 +178,5 @@ export function ParticleShield({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return <canvas ref={canvasRef} className="block" aria-hidden />;
+  return <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" aria-hidden />;
 }
