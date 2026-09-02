@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -9,11 +8,13 @@ import { nav, site } from "@/lib/site";
 import { cn } from "@/lib/utils";
 import { GradientButton } from "@/components/ui/GradientButton";
 import { Icon } from "@/components/ui/Icon";
+import { ShieldMark } from "@/components/brand/ShieldMark";
 import { MobileMenu } from "./MobileMenu";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [active, setActive] = useState<string | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
 
@@ -40,17 +41,19 @@ export function Navbar() {
               "flex items-center justify-between rounded-2xl px-4 py-2.5 transition-all duration-500",
               scrolled ? "glass-strong shadow-card" : "bg-transparent"
             )}
-            onMouseLeave={() => setActive(null)}
+            onMouseLeave={() => {
+              setActive(null);
+              setHovered(null);
+            }}
           >
             <Link href="/" className="flex items-center gap-2.5">
-              <Image
-                src="/logo.png"
-                alt="AgentShield AI"
-                width={44}
-                height={44}
-                className="h-10 w-10 object-contain"
-                priority
-              />
+              <motion.span
+                className="h-10 w-10"
+                whileHover={{ rotate: -8, scale: 1.06 }}
+                transition={{ type: "spring", stiffness: 300, damping: 15 }}
+              >
+                <ShieldMark />
+              </motion.span>
               <span className="hidden font-display text-lg font-semibold tracking-tight text-white sm:block">
                 AgentShield <span className="text-gradient-neon">AI</span>
               </span>
@@ -61,7 +64,10 @@ export function Navbar() {
                 <div
                   key={item.label}
                   className="relative"
-                  onMouseEnter={() => setActive(item.children ? item.label : null)}
+                  onMouseEnter={() => {
+                    setHovered(item.label);
+                    if (item.children) setActive(item.label);
+                  }}
                 >
                   <Link
                     href={item.href}
@@ -88,6 +94,13 @@ export function Navbar() {
                       >
                         <path d="m6 9 6 6 6-6" />
                       </svg>
+                    )}
+                    {(hovered ? hovered === item.label : pathname === item.href) && (
+                      <motion.span
+                        layoutId="nav-underline"
+                        className="absolute inset-x-3 -bottom-0.5 h-0.5 rounded-full bg-gradient-to-r from-neon-cyan to-neon-violet"
+                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                      />
                     )}
                   </Link>
 
@@ -133,6 +146,17 @@ export function Navbar() {
             </nav>
 
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => window.dispatchEvent(new Event("open-cmdk"))}
+                aria-label="Open command palette"
+                className="hidden items-center gap-2 rounded-full border border-white/12 bg-white/[0.03] px-3 py-2 text-xs text-white/55 transition-colors hover:border-white/25 hover:text-white lg:flex"
+              >
+                <Icon name="Search" className="h-3.5 w-3.5" />
+                <span>Search</span>
+                <kbd className="ml-1 flex items-center gap-0.5 rounded border border-white/15 px-1 py-0.5 text-[10px] text-white/45">
+                  <Icon name="Command" className="h-2.5 w-2.5" />K
+                </kbd>
+              </button>
               <div className="hidden lg:block">
                 <GradientButton href={site.repo} target="_blank" rel="noopener noreferrer">GitHub</GradientButton>
               </div>

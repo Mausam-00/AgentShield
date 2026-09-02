@@ -6,6 +6,7 @@ import { Hero3D } from "@/components/three/Hero3D";
 import { AuroraBackground } from "@/components/background/AuroraBackground";
 import { ParticleField } from "@/components/background/ParticleField";
 import { GradientButton } from "@/components/ui/GradientButton";
+import { CopyButton } from "@/components/ui/CopyButton";
 import { Pill } from "@/components/ui/Pill";
 import { StatCounter } from "@/components/ui/StatCounter";
 import { heroStats, site } from "@/lib/site";
@@ -105,6 +106,7 @@ export function Hero() {
             <GradientButton href={site.repo} target="_blank" rel="noopener noreferrer">
               Get it on GitHub
             </GradientButton>
+            <CopyButton value={`git clone ${site.repo}.git`} label="git clone agentshield" />
           </motion.div>
 
           <motion.div

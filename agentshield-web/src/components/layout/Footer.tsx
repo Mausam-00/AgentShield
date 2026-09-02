@@ -1,7 +1,7 @@
 import Link from "next/link";
-import Image from "next/image";
 import { nav, site } from "@/lib/site";
 import { Icon } from "@/components/ui/Icon";
+import { ShieldMark } from "@/components/brand/ShieldMark";
 
 export function Footer() {
   return (
@@ -11,13 +11,9 @@ export function Footer() {
         <div className="grid gap-12 lg:grid-cols-[1.3fr_1fr_1fr_1fr]">
           <div>
             <Link href="/" className="flex items-center gap-2.5">
-              <Image
-                src="/logo.png"
-                alt="AgentShield AI"
-                width={44}
-                height={44}
-                className="h-10 w-10 object-contain"
-              />
+              <span className="h-10 w-10">
+                <ShieldMark />
+              </span>
               <span className="font-display text-lg font-semibold text-white">
                 AgentShield <span className="text-gradient-neon">AI</span>
               </span>

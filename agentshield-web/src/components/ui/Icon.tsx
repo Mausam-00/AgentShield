@@ -32,6 +32,10 @@ import {
   AlertTriangle,
   ShieldAlert,
   Target,
+  Copy,
+  Command,
+  Search,
+  CornerDownLeft,
   type LucideIcon,
 } from "lucide-react";
 
@@ -67,6 +71,10 @@ const map: Record<string, LucideIcon> = {
   AlertTriangle,
   ShieldAlert,
   Target,
+  Copy,
+  Command,
+  Search,
+  CornerDownLeft,
 };
 
 export function Icon({
