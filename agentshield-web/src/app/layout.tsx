@@ -5,7 +5,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { ScrollProgress } from "@/components/background/ScrollProgress";
 import { CursorGlow } from "@/components/background/CursorGlow";
-import { LogoIntro } from "@/components/intro/LogoIntro";
+import { Intro } from "@/components/intro/Intro";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import { site } from "@/lib/site";
 
@@ -59,7 +59,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${display.variable} ${sans.variable} ${mono.variable}`}>
       <body className="noise font-sans antialiased">
-        <LogoIntro />
+        <Intro />
         <CommandPalette />
         <ScrollProgress />
         <CursorGlow />
