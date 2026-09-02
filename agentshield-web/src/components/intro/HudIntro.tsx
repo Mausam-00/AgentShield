@@ -145,7 +145,12 @@ export function HudIntro() {
               animate={{ opacity: assembled ? 0 : 1 }}
               transition={{ duration: 0.5, delay: assembled ? 0.15 : 0 }}
             >
-              <ParticleShield logoHeight={MARK_H} assembleMs={ASSEMBLE_MS} onAssembled={handleAssembled} />
+              <ParticleShield
+                logoHeight={MARK_H}
+                assembleMs={ASSEMBLE_MS}
+                spawnMode="ring"
+                onAssembled={handleAssembled}
+              />
             </motion.div>
           )}
 
@@ -289,7 +294,7 @@ export function HudIntro() {
               style={{ height: MARK_H, width: MARK_H * (100 / 118) }}
               initial={{ opacity: reduce ? 1 : 0 }}
               animate={{ opacity: assembled ? 1 : 0, scale: assembled ? [0.94, 1] : 0.94 }}
-              transition={{ duration: 0.5 }}
+              transition={{ duration: 0.45, delay: assembled && !reduce ? 0.2 : 0 }}
             >
               <ShieldMark mode="static" strokeWidth={2.2} />
             </motion.div>

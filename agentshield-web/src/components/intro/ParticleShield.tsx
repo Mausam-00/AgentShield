@@ -38,10 +38,12 @@ function colorFor(fx: number, fy: number) {
 export function ParticleShield({
   logoHeight = 240,
   assembleMs = 1600,
+  spawnMode = "page",
   onAssembled,
 }: {
   logoHeight?: number;
   assembleMs?: number;
+  spawnMode?: "page" | "ring";
   onAssembled?: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -115,10 +117,22 @@ export function ParticleShield({
         ? targets.sort(() => Math.random() - 0.5).slice(0, MAX)
         : targets;
 
-    // 2) Build particles spawning from anywhere across the whole page.
+    // 2) Build particles. "page" scatters spawns across the whole viewport;
+    // "ring" spawns them evenly on a circle around centre so they implode
+    // straight into the middle of the reticle (no directional drift).
+    const ringR = Math.min(W, H) * 0.46;
     const particles: Particle[] = chosen.map((t) => {
-      const sx = (Math.random() * 1.3 - 0.15) * W;
-      const sy = (Math.random() * 1.3 - 0.15) * H;
+      let sx: number;
+      let sy: number;
+      if (spawnMode === "ring") {
+        const ang = Math.random() * Math.PI * 2;
+        const r = ringR * (0.85 + Math.random() * 0.4);
+        sx = cx + Math.cos(ang) * r;
+        sy = cy + Math.sin(ang) * r;
+      } else {
+        sx = (Math.random() * 1.3 - 0.15) * W;
+        sy = (Math.random() * 1.3 - 0.15) * H;
+      }
       const dist = Math.hypot(t.x - sx, t.y - sy);
       return {
         sx,
