@@ -245,10 +245,12 @@ export function HudIntro() {
             {!reduce && (
               <motion.div
                 aria-hidden
-                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                className="absolute left-1/2 top-1/2 rounded-full"
                 style={{
                   width: "70%",
                   height: "70%",
+                  translateX: "-50%",
+                  translateY: "-50%",
                   background:
                     "conic-gradient(from 0deg, rgba(56,225,255,0) 0deg, rgba(56,225,255,0.32) 42deg, rgba(56,225,255,0) 60deg)",
                 }}
@@ -264,24 +266,29 @@ export function HudIntro() {
             {!reduce && assembled && (
               <motion.span
                 aria-hidden
-                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-neon-cyan/50"
-                style={{ width: "34%", height: "34%" }}
+                className="absolute left-1/2 top-1/2 rounded-full border border-neon-cyan/50"
+                style={{ width: "34%", height: "34%", translateX: "-50%", translateY: "-50%" }}
                 initial={{ scale: 0.5, opacity: 0 }}
                 animate={{ scale: [0.5, 2.2], opacity: [0, 0.7, 0] }}
                 transition={{ duration: 1, ease: "easeOut" }}
               />
             )}
 
-            {/* Crisp shield mark at the core */}
-            <motion.div
+            {/* Crisp shield mark at the core (static wrapper centres it; inner
+                motion only fades/scales so it can't clobber the translate) */}
+            <div
               className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_0_40px_rgba(79,124,255,0.45)]"
               style={{ height: MARK_H, width: MARK_H * (100 / 118) }}
-              initial={{ opacity: reduce ? 1 : 0 }}
-              animate={{ opacity: assembled ? 1 : 0, scale: assembled ? [0.94, 1] : 0.94 }}
-              transition={{ duration: 0.45, delay: assembled && !reduce ? 0.2 : 0 }}
             >
-              <ShieldMark mode="static" strokeWidth={2.2} />
-            </motion.div>
+              <motion.div
+                className="h-full w-full"
+                initial={{ opacity: reduce ? 1 : 0 }}
+                animate={{ opacity: assembled ? 1 : 0, scale: assembled ? [0.94, 1] : 0.94 }}
+                transition={{ duration: 0.45, delay: assembled && !reduce ? 0.2 : 0 }}
+              >
+                <ShieldMark mode="static" strokeWidth={2.2} />
+              </motion.div>
+            </div>
 
             {/* Corner targeting brackets */}
             {[
