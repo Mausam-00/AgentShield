@@ -258,6 +258,66 @@ section[id]{scroll-margin-top:22px}
 .s-low{background:rgba(0,117,255,.18);color:#7cc4ff}
 .decision{font-size:26px;font-weight:800;color:var(--mut)}
 .section{margin-top:26px}
+/* --- hero verdict band --- */
+.hero{display:flex;align-items:center;gap:26px;flex-wrap:wrap;
+  background:linear-gradient(135deg,rgba(0,117,255,.16),rgba(159,122,234,.10));
+  border:1px solid var(--line);border-radius:22px;padding:22px 26px;margin:4px 0 22px;
+  position:relative;overflow:hidden;animation:fadeUp .55s cubic-bezier(.2,.7,.2,1) both}
+.hero::before{content:"";position:absolute;right:-70px;top:-90px;width:300px;height:300px;
+  background:radial-gradient(circle,rgba(33,212,253,.30),transparent 62%);pointer-events:none}
+.hero .hverdict{flex:1;min-width:260px;position:relative}
+.hero .hverdict .lead{font-size:23px;font-weight:800;margin:12px 0 4px;line-height:1.24}
+.hero .hverdict .say{color:var(--mut);font-size:14px;margin:0}
+.hero .hpost{display:flex;align-items:center;gap:22px;position:relative}
+.hero .hmini{text-align:center;min-width:96px}
+.hero .hmini .dec{font-size:21px;font-weight:800}
+.hero .hmini small{display:block;color:var(--mut);font-size:11px;letter-spacing:.09em;
+  text-transform:uppercase;margin-top:3px}
+.hpill-lg{font-size:19px;padding:11px 24px}
+/* --- attack-family defense heatmap --- */
+.heat{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:14px}
+.hcell{position:relative;border:1px solid var(--line);border-radius:16px;padding:14px 16px;
+  background:linear-gradient(160deg,var(--card-a),var(--card-b));overflow:hidden;
+  animation:fadeUp .5s cubic-bezier(.2,.7,.2,1) both}
+.hcell::before{content:"";position:absolute;inset:0;background:var(--cc);opacity:.10;pointer-events:none}
+.hcell .hc-top{display:flex;align-items:center;justify-content:space-between;gap:8px;position:relative}
+.hcell .hc-top b{font-size:13px}
+.hcell .hc-name{position:relative;color:var(--dim);font-size:11px;margin:2px 0 0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hcell .hc-val{font-size:25px;font-weight:800;margin:8px 0 6px;position:relative}
+.hbar{height:8px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;position:relative}
+.hbar i{display:block;height:100%;border-radius:999px;animation:grow 1s ease-out}
+/* --- severity stacked bar --- */
+.sevbar{display:flex;height:12px;border-radius:999px;overflow:hidden;margin-top:14px;
+  background:rgba(255,255,255,.06)}
+.sevbar i{display:block;height:100%;animation:grow 1.1s ease-out}
+.sevbar .b-high{background:linear-gradient(90deg,#e31a1a,#ff8a8a)}
+.sevbar .b-med{background:linear-gradient(90deg,#f79009,#ffce8a)}
+.sevbar .b-low{background:linear-gradient(90deg,#0075ff,#21d4fd)}
+/* --- load animations --- */
+@keyframes grow{from{width:0}}
+@keyframes popin{from{opacity:0;transform:scale(.82)}}
+.kpis .card{animation:fadeUp .5s cubic-bezier(.2,.7,.2,1) both}
+.kpis .card:nth-child(1){animation-delay:.03s}
+.kpis .card:nth-child(2){animation-delay:.08s}
+.kpis .card:nth-child(3){animation-delay:.13s}
+.kpis .card:nth-child(4){animation-delay:.18s}
+.kpis .card:nth-child(5){animation-delay:.23s}
+.kpis .card:nth-child(6){animation-delay:.28s}
+.kpis .card:nth-child(7){animation-delay:.33s}
+.hcell:nth-child(2){animation-delay:.05s}
+.hcell:nth-child(3){animation-delay:.10s}
+.hcell:nth-child(4){animation-delay:.15s}
+.hcell:nth-child(5){animation-delay:.20s}
+.hcell:nth-child(6){animation-delay:.25s}
+.hcell:nth-child(7){animation-delay:.30s}
+.hcell:nth-child(8){animation-delay:.35s}
+.hcell:nth-child(9){animation-delay:.40s}
+.ring{animation:popin .6s cubic-bezier(.2,.7,.2,1) both}
+.gauge i,.track i{animation:grow 1s ease-out}
+@media (prefers-reduced-motion:reduce){
+  .hero,.kpis .card,.hcell,.ring,.gauge i,.track i,.hbar i,.sevbar i{animation:none}
+}
 .section h2{font-size:16px;margin:0 0 14px;display:flex;align-items:center;gap:10px}
 .section h2::before{content:"";width:10px;height:22px;border-radius:4px;
   background:linear-gradient(180deg,var(--info2),var(--info),var(--primary))}
@@ -345,6 +405,105 @@ LOGO = (
 )
 
 
+_DECISION_COLOR = {
+    "ALLOW": "var(--pass)", "APPROVE": "var(--pass)", "TRANSFORM": "var(--info2)",
+    "ESCALATE": "var(--warn)", "DENY": "var(--block)",
+}
+_VERDICT_LEAD = {
+    "PASS": "Assurance posture is clean.",
+    "WARN": "Remediate before authorization.",
+    "BLOCK": "Blocking gaps &mdash; do not authorize.",
+}
+_DECISION_SAY = {
+    "ALLOW": "runtime action allowed",
+    "APPROVE": "approval required before action",
+    "TRANSFORM": "runtime action transformed",
+    "ESCALATE": "runtime action escalated",
+    "DENY": "runtime action denied (fail-closed)",
+}
+
+
+def render_hero(data: dict[str, Any]) -> str:
+    a = data.get("assurance") or {}
+    posture = str(a.get("posture") or "")
+    pill = POSTURE_PILL.get(posture, "p-warn")
+    score = a.get("score")
+    score_txt = esc_raw(score) if score is not None else "n/a"
+    findings = data.get("findings") or []
+    highs = sum(1 for f in findings if sev_class(f.get("severity")) == "high")
+    meds = sum(1 for f in findings if sev_class(f.get("severity")) == "med")
+    lows = sum(1 for f in findings if sev_class(f.get("severity")) == "low")
+    runtime = data.get("runtime")
+    if isinstance(runtime, dict) and runtime.get("decision"):
+        decision = str(runtime.get("decision") or "")
+        dcol = _DECISION_COLOR.get(decision.upper(), "var(--mut)")
+        dsay = _DECISION_SAY.get(decision.upper(), "runtime decision recorded")
+        dec_block = (
+            f'<div class="hmini"><div class="dec" style="color:{dcol}">{esc(decision)}</div>'
+            f'<small>runtime</small></div>'
+        )
+    else:
+        dsay = "no runtime action submitted"
+        dec_block = (
+            '<div class="hmini"><div class="dec" style="color:var(--mut)">N / A</div>'
+            '<small>runtime</small></div>'
+        )
+    lead = _VERDICT_LEAD.get(posture, "Assessment complete.")
+    say = (f"{highs} high &middot; {meds} medium &middot; {lows} low findings &middot; "
+           f"static score {score_txt}/100 &middot; {dsay}.")
+    return f"""
+  <section class="hero">
+    <div class="hverdict">
+      <p class="k-title">Assurance Verdict</p>
+      <div class="lead">{lead}</div>
+      <p class="say">{say}</p>
+    </div>
+    <div class="hpost">
+      <div class="hmini">
+        <span class="posture-pill {pill} hpill-lg">{esc(posture)}</span>
+        <small style="margin-top:8px">posture</small>
+      </div>
+      <div class="hmini"><div class="dec" style="color:var(--info2)">{score_txt}</div>
+        <small>/ 100</small></div>
+      {dec_block}
+    </div>
+  </section>"""
+
+
+def render_heatmap(data: dict[str, Any]) -> str:
+    rt = data.get("redteam") if isinstance(data, dict) else None
+    families = (rt or {}).get("families") if isinstance(rt, dict) else None
+    if not families:
+        return ""
+    sev_cls = {"CRITICAL": "sv-crit", "HIGH": "sv-high", "MEDIUM": "sv-med", "LOW": "sv-med"}
+    cells = []
+    for f in families:
+        attempts = f.get("attempts") or 0
+        resisted = f.get("resisted") or 0
+        partial = f.get("partial") or 0
+        defended = int(round(((resisted + 0.5 * partial) / attempts) * 100)) if attempts else 0
+        col = _cov_color(defended)
+        sv = sev_cls.get(str(f.get("severity")).upper(), "sv-med")
+        sub = f"{esc(resisted)}/{esc(attempts)} resisted"
+        if partial:
+            sub += f" &middot; {esc(partial)} partial"
+        cells.append(
+            f'<div class="hcell" style="--cc:{col}">'
+            f'<div class="hc-top"><b>{esc(f.get("id"))}</b>'
+            f'<span class="sv {sv}">{esc(f.get("severity"))}</span></div>'
+            f'<p class="hc-name">{esc(f.get("name"))}</p>'
+            f'<div class="hc-val" style="color:{col}">{defended}%</div>'
+            f'<div class="hbar"><i style="width:{defended}%;background:{col}"></i></div>'
+            f'<p class="sub" style="margin:6px 0 0;font-size:11px">{sub}</p></div>'
+        )
+    return f"""
+  <section class="section">
+    <h2 style="font-size:15px;margin-bottom:2px">Attack-Family Defense Coverage
+      <span class="sub" style="font-weight:400">&middot; static inference &middot; higher is safer</span></h2>
+    <div class="heat">{''.join(cells)}</div>
+  </section>"""
+
+
 def render_kpis(data: dict[str, Any]) -> str:
     a = data.get("assurance") or {}
     posture = str(a.get("posture") or "")
@@ -403,9 +562,22 @@ def render_kpis(data: dict[str, Any]) -> str:
         f'<div class="gauge"><i style="width:{cov_pct}%"></i></div>'
         f'<p class="sub" style="margin-top:12px">Confidence: <b style="color:#fcd34d">{confidence}</b></p></div>'
     )
+    total = highs + meds + lows
+    if total:
+        wh = round(highs / total * 100, 1)
+        wm = round(meds / total * 100, 1)
+        wl = round(100 - wh - wm, 1)
+        sevbar = (
+            f'<div class="sevbar"><i class="b-high" style="width:{wh}%"></i>'
+            f'<i class="b-med" style="width:{wm}%"></i>'
+            f'<i class="b-low" style="width:{wl}%"></i></div>'
+        )
+    else:
+        sevbar = '<div class="sevbar"></div>'
     cards.append(
         f'<a class="card cardlink" href="#findings"><p class="k-title">Findings</p>'
         f'<div class="big">{len(findings)}</div>'
+        f'{sevbar}'
         f'<div class="sev-mini"><span class="s-high">{highs} High</span>'
         f'<span class="s-med">{meds} Med</span><span class="s-low">{lows} Low</span></div></a>'
     )
@@ -977,7 +1149,9 @@ def build_html(data: dict[str, Any]) -> str:
         <span class="chip">trace: {esc(safe.get('trace_id'))}</span>
       </div>
     </header>
+    {render_hero(safe)}
     {render_kpis(safe)}
+    {render_heatmap(safe)}
     {render_subject_runtime(safe)}
     <p class="hint">Your dashboard is the home view &middot; <b>click any card or tab</b> to open a detailed section, then use <b>&larr; Back to dashboard</b> to return.</p>
     {render_redteam(safe)}

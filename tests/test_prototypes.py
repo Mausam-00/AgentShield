@@ -469,5 +469,54 @@ class ShowcaseRenderTests(unittest.TestCase):
         self.assertIn("Not certification", overview)
 
 
+    def test_hero_heatmap_sevbar_render_and_safe(self):
+        dash = self._dashboard()
+        data = {
+            "trace_id": "t", "timestamp_utc": "2026-01-01T00:00:00Z",
+            "mode": "OBSERVE", "simulation": True,
+            "subject": {"name": "x", "owner": None, "sponsor": None},
+            "assurance": {"posture": "WARN", "score": 55, "coverage": 0.6,
+                          "confidence": "MEDIUM", "audit_version": "v1",
+                          "definition_hash": None, "tool_manifest_hash": None},
+            "runtime": {"decision": "DENY", "action": "a", "target": "t",
+                        "environment": "e"},
+            "findings": [
+                {"severity": "HIGH"}, {"severity": "MEDIUM"}, {"severity": "LOW"},
+            ],
+            "coverage_limitations": [], "observations": [], "hypotheses": [],
+            "policy_matches": [], "approval": None, "plan": None, "validation": None,
+            "evidence_summary": {"records": 5}, "limitations": [],
+            "accountability_statement": "owner accountable.",
+            "redteam": {
+                "defense_coverage": 0.56, "residual_exposure": 0.44,
+                "overall_asr": 0.4, "posture_signal": "WARN",
+                "families": [
+                    {"id": "RT-INJ-D", "name": "Direct prompt injection",
+                     "severity": "CRITICAL", "attempts": 2, "resisted": 0,
+                     "partial": 0, "success": 2, "asr": 1.0},
+                    {"id": "RT-TOOL", "name": "Tool misuse", "severity": "CRITICAL",
+                     "attempts": 2, "resisted": 2, "partial": 0, "success": 0,
+                     "asr": 0.0},
+                ],
+            },
+        }
+        doc = dash.build_html(data)
+        # Hero verdict band.
+        self.assertIn("Assurance Verdict", doc)
+        self.assertIn("Remediate before authorization.", doc)
+        self.assertIn("runtime action denied (fail-closed)", doc)
+        # Attack-family heatmap (defended coverage, honest per-family).
+        self.assertIn("Attack-Family Defense Coverage", doc)
+        self.assertIn("RT-INJ-D", doc)
+        self.assertIn("0/2 resisted", doc)
+        self.assertIn("2/2 resisted", doc)
+        # Severity stacked bar on the Findings KPI card.
+        self.assertIn("sevbar", doc)
+        self.assertIn("b-high", doc)
+        # Still fully self-contained.
+        for token in ("<script", "http://", "https://", "javascript:", "<iframe"):
+            self.assertNotIn(token, doc.lower())
+
+
 if __name__ == "__main__":
     unittest.main()
