@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import {
   animate,
   motion,
@@ -151,8 +152,10 @@ const CLOSE_MS = 1000;
 const TEETH = 26;
 
 export function AboutOverlay() {
+  const router = useRouter();
+  const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
-  const [closing, setClosing] = useState(false);
+  const closingRef = useRef(false);
   const progress = useMotionValue(0); // 0 = zipped shut, 1 = fully open
 
   // Derived motion values driving the zipper.
@@ -175,8 +178,8 @@ export function AboutOverlay() {
   const openRef = useRef<ReturnType<typeof animate> | null>(null);
 
   const close = useCallback(() => {
-    if (closing) return;
-    setClosing(true);
+    if (closingRef.current) return;
+    closingRef.current = true;
     openRef.current?.stop();
     const anim = animate(progress, 0, {
       type: "tween",
@@ -184,16 +187,24 @@ export function AboutOverlay() {
       ease: [0.7, 0, 0.84, 0],
       onComplete: () => {
         setMounted(false);
-        setClosing(false);
+        closingRef.current = false;
       },
     });
     openRef.current = anim;
-  }, [closing, progress]);
+  }, [progress]);
+
+  // "Back" returns to the landing page: navigate home (if elsewhere), scroll to
+  // the top, then dismiss the overlay.
+  const goHome = useCallback(() => {
+    if (pathname !== "/") router.push("/");
+    if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+    close();
+  }, [pathname, router, close]);
 
   // Open on event.
   useEffect(() => {
     const onOpen = () => {
-      setClosing(false);
+      closingRef.current = false;
       setMounted(true);
     };
     window.addEventListener("open-about", onOpen);
@@ -384,7 +395,7 @@ export function AboutOverlay() {
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
             <button
               type="button"
-              onClick={close}
+              onClick={goHome}
               className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.03] px-5 py-2.5 text-sm font-semibold text-white/85 transition-colors hover:border-white/25 hover:bg-white/[0.07]"
             >
               <Icon name="ArrowLeft" className="h-4 w-4" />
@@ -458,7 +469,7 @@ export function AboutOverlay() {
 
       {/* ------------------------------------------------------------- chrome */}
       <motion.button
-        onClick={close}
+        onClick={goHome}
         aria-label="Back to site"
         style={{ opacity: chromeOpacity }}
         className="fixed left-4 top-4 z-[40] inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-3.5 py-2 text-sm font-semibold text-white/80 backdrop-blur transition-colors hover:border-white/30 hover:bg-white/[0.08] hover:text-white sm:left-6 sm:top-6"
