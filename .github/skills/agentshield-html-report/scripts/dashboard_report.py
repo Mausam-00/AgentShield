@@ -318,6 +318,59 @@ section[id]{scroll-margin-top:22px}
 @media (prefers-reduced-motion:reduce){
   .hero,.kpis .card,.hcell,.ring,.gauge i,.track i,.hbar i,.sevbar i{animation:none}
 }
+/* --- prioritized remediations --- */
+.prio{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.prio-item{border:1px solid var(--line);border-left:4px solid var(--mut);border-radius:14px;
+  padding:14px 16px;background:linear-gradient(160deg,var(--card-a),var(--card-b))}
+.prio-item.high{border-left-color:var(--block)}
+.prio-item.med{border-left-color:var(--warn)}
+.prio-item.low{border-left-color:var(--info)}
+.prio-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.prio-h b{font-size:14px}
+.prio-n{width:26px;height:26px;flex:none;border-radius:50%;display:grid;place-items:center;
+  font-weight:800;font-size:13px;background:rgba(255,255,255,.09)}
+.prio-score{margin-left:auto;font-size:12px;font-weight:700;color:var(--mut);
+  border:1px solid var(--line);border-radius:8px;padding:3px 9px;white-space:nowrap}
+.prio-item p{margin:9px 0 0;color:var(--mut);font-size:13px;line-height:1.5}
+/* --- theme toggle (pure CSS) --- */
+.themetog{display:inline-flex;align-items:center;gap:8px;cursor:pointer;user-select:none;
+  font-size:12px;font-weight:600;color:var(--mut)}
+.themetog input{position:absolute;opacity:0;width:0;height:0}
+.themetog:focus-within .tt-track{outline:2px solid var(--info2);outline-offset:2px}
+.tt-track{width:42px;height:22px;border-radius:999px;background:rgba(255,255,255,.14);
+  border:1px solid var(--line);position:relative;transition:.2s}
+.tt-thumb{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;
+  background:linear-gradient(135deg,var(--info2),var(--primary2));transition:.2s}
+.themetog input:checked ~ .tt-track{background:rgba(255,181,71,.4)}
+.themetog input:checked ~ .tt-track .tt-thumb{transform:translateX(20px);
+  background:linear-gradient(135deg,#f79009,#ffce8a)}
+/* --- light theme (toggled) --- */
+body:has(.themetog input:checked){
+  --card-a:rgba(255,255,255,.94); --card-b:rgba(240,244,252,.88);
+  --line:rgba(15,23,42,.12); --ink:#0b1437; --mut:#475569; --dim:#64748b;
+  background:#eef2fb;
+}
+body:has(.themetog input:checked)::before{
+  background:
+   radial-gradient(620px 520px at 8% 0%,rgba(67,24,255,.10),transparent 55%),
+   radial-gradient(720px 620px at 92% 4%,rgba(0,117,255,.09),transparent 55%),
+   radial-gradient(680px 640px at 50% 112%,rgba(159,122,234,.08),transparent 60%),
+   linear-gradient(160deg,#eef2fb 0%,#e6ebf7 60%);
+}
+body:has(.themetog input:checked) .gauge,
+body:has(.themetog input:checked) .track,
+body:has(.themetog input:checked) .sevbar,
+body:has(.themetog input:checked) .hbar{background:rgba(15,23,42,.08)}
+body:has(.themetog input:checked) .ring::before{
+  background:radial-gradient(circle at 50% 35%,#ffffff,#eef2fb)}
+body:has(.themetog input:checked) .nav a .ic,
+body:has(.themetog input:checked) .chip,
+body:has(.themetog input:checked) .prio-n,
+body:has(.themetog input:checked) .tt-track{background:rgba(15,23,42,.07)}
+body:has(.themetog input:checked) .nav a:hover{background:rgba(15,23,42,.04)}
+body:has(.themetog input:checked) .nav a.home,
+body:has(.themetog input:checked) .nav a:hover{color:#0b1437}
+body:has(.themetog input:checked) .chip.sim{color:#8a5200;background:rgba(255,181,71,.22)}
 .section h2{font-size:16px;margin:0 0 14px;display:flex;align-items:center;gap:10px}
 .section h2::before{content:"";width:10px;height:22px;border-radius:4px;
   background:linear-gradient(180deg,var(--info2),var(--info),var(--primary))}
@@ -974,14 +1027,70 @@ def _ul(items: Any, empty: str = "None recorded.") -> str:
     return "<ul class='lst'>" + "".join(f"<li>{esc(i)}</li>" for i in items) + "</ul>"
 
 
+_SEV_RANK = {"CRITICAL": 4, "HIGH": 3, "MEDIUM": 2, "LOW": 1, "INFO": 0}
+
+
+def _priority_rows(findings: list[Any]) -> list[dict[str, Any]]:
+    """Rank findings by effective severity x evidence confidence (desc).
+
+    Uses effective_severity + confidence when present (deterministic base
+    findings); falls back to raw severity and full weight for model-authored
+    findings that omit provenance keys, so the ordering is always defined.
+    """
+
+    rows = []
+    for f in findings:
+        eff = str(f.get("effective_severity") or f.get("severity") or "").upper()
+        base = _SEV_RANK.get(eff, 1)
+        conf = f.get("confidence")
+        weight = float(conf) if isinstance(conf, (int, float)) else 1.0
+        weight = max(0.0, min(1.0, weight))
+        rows.append({
+            "score": round(base * weight, 2),
+            "eff": eff,
+            "rank": base,
+            "finding": f,
+        })
+    rows.sort(key=lambda r: (-r["score"], -r["rank"]))
+    return rows
+
+
 def render_cols(data: dict[str, Any]) -> str:
     findings = data.get("findings") or []
-    remediations = [f.get("remediation") for f in findings if f.get("remediation")]
+    ranked = _priority_rows(findings)
+    if ranked:
+        items = []
+        for i, row in enumerate(ranked, 1):
+            f = row["finding"]
+            sc = sev_class(f.get("severity"))
+            badge = {"high": "b-high", "med": "b-med", "low": "b-low"}[sc]
+            eff = f.get("effective_severity")
+            sev_txt = esc(f.get("severity"))
+            if eff and eff != f.get("severity"):
+                sev_txt = f"{sev_txt} &rarr; {esc(eff)}"
+            rem = f.get("remediation")
+            rem_html = (f"<p>{esc(rem)}</p>" if rem
+                        else '<p class="sub">No remediation text recorded.</p>')
+            items.append(
+                f'<li class="prio-item {sc}">'
+                f'<div class="prio-h"><span class="prio-n">{i}</span>'
+                f'<span class="badge {badge}">{sev_txt}</span>'
+                f'<b>{esc(f.get("title"))}</b>'
+                f'<span class="fam">{esc(f.get("control_family"))}</span>'
+                f'<span class="prio-score" title="effective severity x evidence confidence">'
+                f'P&nbsp;{row["score"]}</span></div>'
+                f'{rem_html}</li>'
+            )
+        remediation_block = f'<ol class="prio">{"".join(items)}</ol>'
+    else:
+        remediation_block = '<p class="sub">No findings to remediate.</p>'
     return f"""
-  <section id="remediations" class="panel section cols">
+  <section id="remediations" class="panel section">
     {BACKBAR}
-    <div><h2>Remediations</h2>{_ul(remediations)}</div>
-    <div><h2>Coverage Limitations</h2>{_ul(data.get('coverage_limitations'))}</div>
+    <h2>Fix These First <span class="sub" style="font-weight:400">&middot; ranked by effective severity &times; evidence confidence</span></h2>
+    {remediation_block}
+    <h2 style="margin-top:22px">Coverage Limitations</h2>
+    {_ul(data.get('coverage_limitations'))}
   </section>"""
 
 
@@ -1147,6 +1256,11 @@ def build_html(data: dict[str, Any]) -> str:
         <span class="chip mode">{esc(safe.get('mode'))}</span>
         {sim_chip}
         <span class="chip">trace: {esc(safe.get('trace_id'))}</span>
+        <label class="themetog" title="Toggle light / dark theme">
+          <input type="checkbox">
+          <span class="tt-track"><span class="tt-thumb"></span></span>
+          <span>Light</span>
+        </label>
       </div>
     </header>
     {render_hero(safe)}

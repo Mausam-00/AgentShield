@@ -518,5 +518,47 @@ class ShowcaseRenderTests(unittest.TestCase):
             self.assertNotIn(token, doc.lower())
 
 
+    def test_priority_remediation_and_theme_toggle(self):
+        dash = self._dashboard()
+        data = {
+            "trace_id": "t", "timestamp_utc": "2026-01-01T00:00:00Z",
+            "mode": "OBSERVE", "simulation": True,
+            "subject": {"name": "x", "owner": None, "sponsor": None},
+            "assurance": {"posture": "WARN", "score": 55, "coverage": 0.6,
+                          "confidence": "MEDIUM", "audit_version": "v1",
+                          "definition_hash": None, "tool_manifest_hash": None},
+            "runtime": None,
+            "findings": [
+                {"id": "SA-05", "severity": "LOW", "title": "Low thing",
+                 "control_family": "ASF-10", "remediation": "Fix low.",
+                 "confidence": 1.0},
+                {"id": "SA-03", "severity": "HIGH", "title": "High thing",
+                 "control_family": "ASF-02", "remediation": "Fix high.",
+                 "confidence": 1.0},
+                {"id": "SA-04", "severity": "LOW", "title": "Fenced thing",
+                 "control_family": "ASF-05", "remediation": "Fix fenced.",
+                 "effective_severity": "INFO", "confidence": 0.25},
+            ],
+            "coverage_limitations": ["something"], "observations": [],
+            "hypotheses": [], "policy_matches": [], "approval": None,
+            "plan": None, "validation": None, "evidence_summary": {"records": 5},
+            "limitations": [], "accountability_statement": "owner accountable.",
+        }
+        doc = dash.build_html(data)
+        # Prioritized remediation view.
+        self.assertIn("Fix These First", doc)
+        # HIGH finding must rank above both LOW findings.
+        rem = doc.split('id="remediations"', 1)[1]
+        self.assertLess(rem.index("High thing"), rem.index("Low thing"))
+        self.assertLess(rem.index("High thing"), rem.index("Fenced thing"))
+        # Down-weighted fenced INFO finding ranks last.
+        self.assertGreater(rem.index("Fenced thing"), rem.index("Low thing"))
+        # Theme toggle is present and pure-CSS (no script).
+        self.assertIn("themetog", doc)
+        self.assertIn(":has(.themetog input:checked)", doc)
+        for token in ("<script", "http://", "https://", "javascript:", "<iframe"):
+            self.assertNotIn(token, doc.lower())
+
+
 if __name__ == "__main__":
     unittest.main()
