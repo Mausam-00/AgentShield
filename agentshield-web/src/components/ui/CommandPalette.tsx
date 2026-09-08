@@ -39,8 +39,8 @@ export function CommandPalette() {
       ...navCmds,
       {
         id: "about",
-        label: "About AgentShield AI",
-        hint: "What it is, features & how it differs",
+        label: "About Us — AgentShield AI",
+        hint: "What it is, capabilities & how it differs",
         icon: "Sparkles",
         run: () => {
           setOpen(false);

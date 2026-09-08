@@ -90,7 +90,7 @@ export function MobileMenu({
                 }}
                 className="w-full"
               >
-                About AgentShield
+                About Us
               </GradientButton>
               <a
                 href={site.repo}

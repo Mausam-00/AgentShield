@@ -161,7 +161,7 @@ export function Navbar() {
                 <GradientButton
                   onClick={() => window.dispatchEvent(new Event("open-about"))}
                 >
-                  About
+                  About Us
                 </GradientButton>
               </div>
               <button
