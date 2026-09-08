@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { nav, site } from "@/lib/site";
+import { nav } from "@/lib/site";
 import { cn } from "@/lib/utils";
 import { GradientButton } from "@/components/ui/GradientButton";
 import { Icon } from "@/components/ui/Icon";
@@ -158,7 +158,11 @@ export function Navbar() {
                 </kbd>
               </button>
               <div className="hidden lg:block">
-                <GradientButton href={site.repo} target="_blank" rel="noopener noreferrer">GitHub</GradientButton>
+                <GradientButton
+                  onClick={() => window.dispatchEvent(new Event("open-about"))}
+                >
+                  About
+                </GradientButton>
               </div>
               <button
                 aria-label="Open menu"

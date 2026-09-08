@@ -7,6 +7,7 @@ import { ScrollProgress } from "@/components/background/ScrollProgress";
 import { CursorGlow } from "@/components/background/CursorGlow";
 import { Intro } from "@/components/intro/Intro";
 import { CommandPalette } from "@/components/ui/CommandPalette";
+import { AboutModal } from "@/components/ui/AboutModal";
 import { site } from "@/lib/site";
 
 const display = Space_Grotesk({
@@ -61,6 +62,7 @@ export default function RootLayout({
       <body className="noise font-sans antialiased">
         <Intro />
         <CommandPalette />
+        <AboutModal />
         <ScrollProgress />
         <CursorGlow />
         <Navbar />

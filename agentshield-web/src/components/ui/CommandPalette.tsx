@@ -38,6 +38,16 @@ export function CommandPalette() {
     return [
       ...navCmds,
       {
+        id: "about",
+        label: "About AgentShield AI",
+        hint: "What it is, features & how it differs",
+        icon: "Sparkles",
+        run: () => {
+          setOpen(false);
+          window.dispatchEvent(new Event("open-about"));
+        },
+      },
+      {
         id: "run-engine",
         label: "Run the Engine",
         hint: "Assessment console",

@@ -82,10 +82,24 @@ export function MobileMenu({
               ))}
             </nav>
 
-            <div className="mt-auto pt-6">
-              <GradientButton href={site.repo} target="_blank" rel="noopener noreferrer" className="w-full">
-                GitHub
+            <div className="mt-auto space-y-3 pt-6">
+              <GradientButton
+                onClick={() => {
+                  onClose();
+                  window.dispatchEvent(new Event("open-about"));
+                }}
+                className="w-full"
+              >
+                About AgentShield
               </GradientButton>
+              <a
+                href={site.repo}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.03] px-6 py-3 text-sm font-semibold text-white/85 transition-colors hover:border-white/25 hover:bg-white/[0.07]"
+              >
+                GitHub
+              </a>
             </div>
           </motion.div>
         </motion.div>
