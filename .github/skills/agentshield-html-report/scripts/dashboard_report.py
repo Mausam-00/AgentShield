@@ -286,6 +286,8 @@ section[id]{scroll-margin-top:22px}
 .find p{margin:6px 0;font-size:13px;color:var(--mut);line-height:1.5}
 .find p b{color:var(--ink)}
 .prov{font-size:11px;color:var(--mut);border:1px dashed var(--line);border-radius:8px;padding:4px 8px;display:inline-block}
+.provwrap{margin:6px 0 16px}
+.provwrap h3{margin:6px 0;font-size:15px}
 .cframe{margin:14px 0}
 .cframe h3{margin:6px 0;font-size:15px}
 .cframe .tags{margin:8px 0}
@@ -615,13 +617,53 @@ def render_gates(data: dict[str, Any]) -> str:
   </section>"""
 
 
+_PROV_STATUS_CLASS = {
+    "Definition body": "g-weak",
+    "Whole-definition check": "g-weak",
+    "Quoted block": "g-fair",
+    "Fenced code example": "g-good",
+    "Documentation example": "g-good",
+}
+
+
+def _provenance_table(data: dict[str, Any]) -> str:
+    rows = data.get("provenance_summary") or []
+    if not rows:
+        return ""
+    body = []
+    for r in rows:
+        prov = str(r.get("provenance") or "")
+        cls = _PROV_STATUS_CLASS.get(prov, "g-fair")
+        sev = esc(r.get("severity"))
+        eff = r.get("effective_severity")
+        sev_cell = sev if not eff or eff == r.get("severity") else f"{sev} &rarr; {esc(eff)}"
+        body.append(
+            f"<tr><td><b>{esc(r.get('id'))}</b> {esc(r.get('title'))}</td>"
+            f"<td>{sev_cell}</td>"
+            f"<td><span class='dot {cls}'></span>{esc(prov)}</td>"
+            f"<td>{esc(r.get('confidence'))}</td></tr>"
+        )
+    return f"""
+    <div class="provwrap">
+      <h3>Evidence provenance &amp; confidence weighting</h3>
+      <p class="sub">Deterministic source of each static finding &middot; low-confidence
+      sources (examples/fences) are down-weighted, never hidden.</p>
+      <table><tr><th>Static finding</th><th>Severity</th><th>Source</th><th>Confidence</th></tr>
+      {''.join(body)}</table>
+    </div>"""
+
+
 def render_findings(data: dict[str, Any]) -> str:
     findings = data.get("findings") or []
+    prov_table = _provenance_table(data)
     if not findings:
-        return ('<section id="findings" class="panel section"><div class="backbar">'
-                '<a class="back" href="#overview">&larr; Back to dashboard</a></div>'
-                '<h2>Findings &amp; Evidence</h2>'
-                '<p class="sub">No findings recorded.</p></section>')
+        return (
+            '<section id="findings" class="panel section"><div class="backbar">'
+            '<a class="back" href="#overview">&larr; Back to dashboard</a></div>'
+            '<h2>Findings &amp; Evidence</h2>'
+            + (prov_table or '<p class="sub">No findings recorded.</p>')
+            + '</section>'
+        )
     cards = []
     for f in findings:
         sc = sev_class(f.get("severity"))
@@ -658,6 +700,7 @@ def render_findings(data: dict[str, Any]) -> str:
   <section id="findings" class="panel section">
     {BACKBAR}
     <h2>Findings &amp; Evidence</h2>
+    {prov_table}
     <div class="finds">{''.join(cards)}</div>
   </section>"""
 

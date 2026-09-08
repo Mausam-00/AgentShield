@@ -243,6 +243,33 @@ def render_findings(findings: list[Any]) -> str:
     """
 
 
+def render_provenance(rows: Any) -> str:
+    if not isinstance(rows, list) or not rows:
+        return ""
+    body = ""
+    for r in rows:
+        sev = esc(r.get("severity"))
+        eff = r.get("effective_severity")
+        sev_cell = sev if not eff or eff == r.get("severity") else f"{sev} &rarr; {esc(eff)}"
+        body += (
+            f"<tr><td>{esc(r.get('id'))} {esc(r.get('title'))}</td>"
+            f"<td>{sev_cell}</td><td>{esc(r.get('provenance'))}</td>"
+            f"<td>{esc(r.get('confidence'))}</td></tr>"
+        )
+    return f"""
+    <section class="card">
+      <h2>Evidence provenance &amp; confidence weighting</h2>
+      <p class="note">Deterministic source of each static finding. Low-confidence
+      sources (examples / fenced code) are down-weighted, never hidden.</p>
+      <table>
+        <thead><tr><th>Static finding</th><th>Severity</th>
+        <th>Source</th><th>Confidence</th></tr></thead>
+        <tbody>{body}</tbody>
+      </table>
+    </section>
+    """
+
+
 def render_compliance(compliance: Any) -> str:
     if not isinstance(compliance, dict) or not compliance.get("frameworks"):
         return ""
@@ -499,6 +526,7 @@ def build_html(data: dict[str, Any]) -> str:
         + _list_or_none(safe.get("hypotheses"), "None recorded.")
         + "</section>",
         render_findings(safe.get("findings") or []),
+        render_provenance(safe.get("provenance_summary")),
         render_compliance(safe.get("compliance")),
         "<section class='card'><h2>Coverage limitations</h2>"
         + _list_or_none(safe.get("coverage_limitations"), "None recorded.")

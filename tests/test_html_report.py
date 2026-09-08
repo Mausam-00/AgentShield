@@ -266,11 +266,23 @@ class ComplianceAndProvenanceTests(unittest.TestCase):
                     }
                 ],
             },
+            provenance_summary=[
+                {
+                    "id": "SA-04",
+                    "title": "Hardcoded external endpoint(s)",
+                    "control_family": "ASF-05 Secret handling and output protection",
+                    "severity": "LOW",
+                    "effective_severity": "INFO",
+                    "provenance": "Fenced code example",
+                    "confidence": 0.25,
+                }
+            ],
         )
         doc = GEN.build_html(data)  # must not raise
         self.assertIn("OWASP Top 10 for LLM Applications", doc)
         self.assertIn("LLM01", doc)
         self.assertIn("Fenced code example", doc)
+        self.assertIn("Evidence provenance", doc)
         # URLs inside evidence stay defanged / self-contained.
         self.assertNotIn("https://api", doc.lower())
 

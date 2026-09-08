@@ -251,6 +251,29 @@ def _responsible_ai_block(
     return block
 
 
+def _provenance_summary(assessment) -> list[dict]:
+    """Serialize deterministic per-finding provenance + confidence weighting.
+
+    Derived only from the static assessment (never the model narrative), so the
+    evidence-provenance view is stable and honest regardless of enrichment.
+    """
+
+    rows = []
+    for f in assessment.findings:
+        rows.append(
+            {
+                "id": f.id,
+                "title": f.title,
+                "control_family": f.control_family,
+                "severity": f.severity.value,
+                "effective_severity": f.effective_severity().value,
+                "provenance": f.provenance.value,
+                "confidence": round(f.weight(), 2),
+            }
+        )
+    return rows
+
+
 def build_report(agent_path: str) -> dict:
     assessment = assess_agent_file(agent_path)
 
@@ -291,6 +314,11 @@ def build_report(agent_path: str) -> dict:
         assessment.subject, assessment.definition_text, live
     )
     report["compliance"] = compliance_to_report(assessment.assurance)
+    # Deterministic evidence-provenance summary, taken from the static findings
+    # BEFORE any LLM enrichment can rewrite the findings list. This guarantees
+    # the provenance / confidence weighting (#1) is always visible in the report
+    # even when the narrative findings are model-authored.
+    report["provenance_summary"] = _provenance_summary(assessment)
     report["subject"]["name"] = assessment.subject
 
     # Optional: let the AgentShield agent (Azure OpenAI) author the analysis,
