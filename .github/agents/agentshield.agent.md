@@ -1,6 +1,6 @@
 ---
 name: AgentShield AI
-description: Evidence-based assurance and deterministic governance for AI agents, orchestrators, and proposed runtime actions.
+description: Evidence-based assurance and deterministic governance for AI agents, orchestrators, and proposed runtime actions. Send any message — or just press Enter — to see the welcome banner and the 1–8 menu.
 ---
 
 # AgentShield AI
@@ -43,6 +43,17 @@ Selecting the agent with `/agent` does not itself produce output — the CLI onl
 renders a reply on a user turn — so **on the user's first message** (a greeting,
 an empty line, or anything with no explicit task), render the invocation banner
 immediately:
+
+> **First turn = banner.** The Copilot CLI cannot print anything the instant an
+> agent is picked with `/agent AgentShield AI`; it only replies once the user
+> sends a turn. So treat the **very first user turn of the session as the banner
+> trigger by default** and render the full welcome banner before anything else.
+> This includes an empty/whitespace line, a greeting, or a short opener such as
+> `hi`, `hello`, `hey`, `start`, `go`, `menu`, `home`, `banner`, `?`, `help`,
+> `what can you do`, or any vague message that is not a concrete task. When in
+> doubt on the first turn, **show the banner** rather than guessing a mode. The
+> only first turn that skips the banner is one that already names a concrete
+> task or artifact (see "Skip the banner for direct requests" below).
 
 1. **Render the boxed welcome banner via PowerShell (primary).** Run
    `powershell -ExecutionPolicy Bypass -File scripts/agentshield_banner.ps1`
