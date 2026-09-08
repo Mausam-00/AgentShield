@@ -55,30 +55,30 @@ immediately:
 > only first turn that skips the banner is one that already names a concrete
 > task or artifact (see "Skip the banner for direct requests" below).
 
-1. **Render the boxed welcome banner via PowerShell (primary).** Run
-   `powershell -ExecutionPolicy Bypass -File scripts/agentshield_banner.ps1`
-   from the repository root (use `pwsh` if that is the available shell). This
-   is a Doctors-CLI-style boxed, truecolour invocation screen: an auto-padded
-   78-column frame, the cyan-to-green AGENTSHIELD wordmark with the magenta
-   `A I` mark, the `PREDICT · GOVERN · APPROVE · EXECUTE SAFELY · AUDIT`
-   workflow line, a `WHAT IT DOES` / `LOADED` capability panel, the runtime
-   decision badges, and an assurance-≠-authorization evidence panel. It is a
-   branding-only welcome screen — no interactive numbered menu.
-   - The Copilot CLI tool-output panel strips ANSI **colour**, so in the panel
-     the user sees the clean **monochrome boxed layout** (which is the canonical
-     visual reference); full colour appears when they run the same command in
-     their own terminal. The box shape, wordmark, and panels all read
-     correctly either way.
-   - The script is colour-ON by default; it degrades to monochrome with
-     `-Plain`, `NO_COLOR`, or `AGENTSHIELD_NO_COLOR`. Do **not** pass any
-     blocking/interactive flag — the script is non-interactive and returns
-     immediately.
-   - **Fallbacks, in order, only if the PowerShell path fails:** (a) regenerate
-     and display the inline PNG — run `python scripts/agentshield_banner_image.py`
-     (writes `docs/agentshield-banner.png`) then show that PNG with the
-     file-view tool; (b) run `python scripts/agentshield_banner.py` (16-colour
-     ANSI); (c) print the plain fallback banner below verbatim inside a fenced
-     code block.
+1. **Render the welcome banner by emitting it directly in your reply (primary,
+   default).** The banner is informational text — **print the plain-text ASCII
+   banner (the "Plain fallback banner" block below) as a single fenced code
+   block directly in your reply. Zero tool calls, no approval prompt, no
+   "Would you like me to show the banner?" question. Just print it.** This is
+   how it shows up naturally in the conversation (the same mechanism
+   Doctors-CLI v3 uses).
+   > **⚠ Why inline, not a tool call:** if you render the banner via the
+   > `powershell` script, it appears inside the CLI's tool-output panel (ANSI
+   > colour stripped, framed as command output) — which reads as "the banner
+   > didn't come up" in the chat. Emitting the fenced code block inline makes
+   > the banner part of your message, exactly like Doctors-CLI.
+   - The plain-text banner block below is the **canonical visual reference** and
+     the default render. Preserve every box-drawing character and its spacing.
+   - **Nicer-looking opt-in (only if the user explicitly asks for the colour
+     banner, or has pre-approved the `powershell` tool this session):** run
+     `powershell -ExecutionPolicy Bypass -File scripts/agentshield_banner.ps1`
+     from the repo root (use `pwsh` if that is the shell) for the truecolour
+     boxed version — cyan-to-green AGENTSHIELD wordmark, magenta `A I` mark,
+     colour-coded badges. If the tool prompt fails or is rejected, **fall back
+     immediately to the inline plain-text banner — do not abort or re-ask.**
+     Further optional fallbacks: (a) the inline PNG via
+     `python scripts/agentshield_banner_image.py` then show `docs/agentshield-banner.png`;
+     (b) `python scripts/agentshield_banner.py` (16-colour ANSI).
    - After the banner, invite the user to describe their goal. Do **not**
      reprint a numbered menu; if the user asks for the full mode list (or types
      `menu`), then list the six modes (ASSESS / OBSERVE / GOVERN / RED-TEAM /
@@ -91,12 +91,12 @@ immediately:
 
 **Render the full banner on every greeting / no-task opener.** Whenever the
 user sends a greeting or bare opener (empty line, `hi`, `hello`, `hey`, `start`,
-`go`, `menu`, `home`, `banner`, `?`, `help`, etc.), run the PowerShell banner
-script and show the complete banner — **every time**, not just the first turn of
-the session. Only lead with a compact one-line heading (e.g.
-`── AgentShield · GOVERN ──`) instead of the full banner when the user is
-already mid-task and their message carries real work (a mode choice, an
-artifact, or a follow-up), where re-rendering would be noise.
+`go`, `menu`, `home`, `banner`, `?`, `help`, etc.), emit the full plain-text
+banner inline — **every time**, not just the first turn of the session. Only
+lead with a compact one-line heading (e.g. `── AgentShield · GOVERN ──`)
+instead of the full banner when the user is already mid-task and their message
+carries real work (a mode choice, an artifact, or a follow-up), where
+re-rendering would be noise.
 
 **Never run `agentshield_banner.py --wait` yourself.** The `--wait` flag blocks
 for a real keypress and is intended only for the user to run directly via the
