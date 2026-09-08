@@ -30,6 +30,7 @@ from .models import (  # noqa: F401
     PolicyMatch,
     PolicyResult,
     Posture,
+    Provenance,
     SafePlan,
     Severity,
     ValidationResult,
@@ -74,6 +75,12 @@ from .redteam import (  # noqa: F401
 from .static_assess import (  # noqa: F401
     StaticAssessment,
     assess_agent_file,
+)
+from .compliance import (  # noqa: F401
+    COMPLIANCE_MAP_VERSION,
+    FRAMEWORKS,
+    build_compliance_coverage,
+    compliance_to_report,
 )
 from .interception import (  # noqa: F401
     ExecutionResult,
@@ -145,6 +152,11 @@ __all__ = [
     # Prototypes
     "StaticAssessment",
     "assess_agent_file",
+    "Provenance",
+    "COMPLIANCE_MAP_VERSION",
+    "FRAMEWORKS",
+    "build_compliance_coverage",
+    "compliance_to_report",
     "ExecutionResult",
     "GatedExecutor",
     "MockExecutionTarget",

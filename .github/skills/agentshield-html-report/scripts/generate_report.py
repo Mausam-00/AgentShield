@@ -211,19 +211,23 @@ def render_findings(findings: list[Any]) -> str:
     for f in findings:
         hypo = f.get("hypothesis")
         hypo_row = (
-            f"<tr><td colspan='5' class='hypothesis'>Hypothesis (not evidence): {esc(hypo)}</td></tr>"
+            f"<tr><td colspan='6' class='hypothesis'>Hypothesis (not evidence): {esc(hypo)}</td></tr>"
             if hypo
             else ""
         )
+        prov = f.get("provenance") or "-"
+        conf = f.get("confidence")
+        prov_cell = esc(prov) if conf is None else f"{esc(prov)} ({esc(conf)})"
         rows += f"""
         <tr>
           <td>{esc(f.get('id'))}</td>
           <td>{esc(f.get('severity'))}</td>
           <td>{esc(f.get('control_family'))}</td>
           <td>{esc(f.get('evidence_state'))}</td>
+          <td>{prov_cell}</td>
           <td>{esc(f.get('title'))}</td>
         </tr>
-        <tr><td colspan='5' class='detail'>Observation: {esc(f.get('observation'))}<br>
+        <tr><td colspan='6' class='detail'>Observation: {esc(f.get('observation'))}<br>
         Remediation: {esc(f.get('remediation'))}</td></tr>
         {hypo_row}
         """
@@ -232,9 +236,40 @@ def render_findings(findings: list[Any]) -> str:
       <h2>Assurance findings</h2>
       <table>
         <thead><tr><th>ID</th><th>Severity</th><th>Family</th>
-        <th>Evidence state</th><th>Finding</th></tr></thead>
+        <th>Evidence state</th><th>Source (confidence)</th><th>Finding</th></tr></thead>
         <tbody>{rows}</tbody>
       </table>
+    </section>
+    """
+
+
+def render_compliance(compliance: Any) -> str:
+    if not isinstance(compliance, dict) or not compliance.get("frameworks"):
+        return ""
+    blocks = ""
+    for fw in compliance.get("frameworks") or []:
+        rows = ""
+        for c in fw.get("controls") or []:
+            fams = ", ".join(c.get("families") or [])
+            rows += (
+                f"<tr><td>{esc(c.get('control_id'))} {esc(c.get('control_title'))}</td>"
+                f"<td>{esc(fams)}</td><td>{esc(c.get('status'))}</td>"
+                f"<td>{esc(c.get('note'))}</td></tr>"
+            )
+        blocks += f"""
+        <h3>{esc(fw.get('name'))} (v{esc(fw.get('version'))})</h3>
+        <table>
+          <thead><tr><th>Mapped control</th><th>Families</th>
+          <th>Coverage</th><th>Note</th></tr></thead>
+          <tbody>{rows}</tbody>
+        </table>
+        """
+    return f"""
+    <section class="card">
+      <h2>Compliance framework mapping</h2>
+      <p class="note">{esc(compliance.get('disclaimer'))}</p>
+      {blocks}
+      <p class="muted">Mapping version: {esc(compliance.get('map_version'))}</p>
     </section>
     """
 
@@ -464,6 +499,7 @@ def build_html(data: dict[str, Any]) -> str:
         + _list_or_none(safe.get("hypotheses"), "None recorded.")
         + "</section>",
         render_findings(safe.get("findings") or []),
+        render_compliance(safe.get("compliance")),
         "<section class='card'><h2>Coverage limitations</h2>"
         + _list_or_none(safe.get("coverage_limitations"), "None recorded.")
         + "</section>",

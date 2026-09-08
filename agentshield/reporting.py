@@ -112,8 +112,11 @@ def _findings_block(assurance: Optional[AssuranceResult]) -> list[dict[str, Any]
             {
                 "id": f.id,
                 "severity": f.severity.value,
+                "effective_severity": f.effective_severity().value,
                 "control_family": f.control_family,
                 "evidence_state": f.evidence_state.value,
+                "provenance": f.provenance.value,
+                "confidence": round(f.weight(), 2),
                 "title": f.title,
                 "observation": f.observation,
                 "remediation": f.remediation,

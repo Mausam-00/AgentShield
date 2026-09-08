@@ -25,6 +25,7 @@ from .models import (
     EvidenceState,
     FamilyEvaluation,
     Finding,
+    Provenance,
     Severity,
 )
 
@@ -40,6 +41,66 @@ _WORKDIR_RE = re.compile(r"(?i)working directory[^\n:]*:\s*`?([A-Za-z]:\\[^\s`\n
 # External URLs (used to flag hardcoded endpoints; localhost/example excluded).
 _URL_RE = re.compile(r"https?://[^\s)>\]\"']+", re.IGNORECASE)
 _URL_ALLOW = ("localhost", "127.0.0.1", "example.com", "example.org")
+# Markdown headings that scope an illustrative example/sample region.
+_EXAMPLE_HEADING_RE = re.compile(
+    r"(?i)^\s*#{1,6}\s.*\b(example|sample|for instance|illustrat|demo)\b"
+)
+
+
+def _fenced_spans(text: str) -> list[tuple[int, int]]:
+    """Character spans covered by triple-backtick fenced code blocks."""
+
+    return [(m.start(), m.end()) for m in re.finditer(r"```.*?```", text, re.DOTALL)]
+
+
+def _example_spans(text: str) -> list[tuple[int, int]]:
+    """Character spans of sections introduced by an example/sample heading.
+
+    A region runs from an example heading to the next heading of any level.
+    """
+
+    spans: list[tuple[int, int]] = []
+    pos = 0
+    in_example = False
+    start = 0
+    for line in text.splitlines(keepends=True):
+        if re.match(r"\s*#{1,6}\s", line):
+            is_example = bool(_EXAMPLE_HEADING_RE.match(line))
+            if in_example and not is_example:
+                spans.append((start, pos))
+                in_example = False
+            if is_example and not in_example:
+                in_example = True
+                start = pos
+        pos += len(line)
+    if in_example:
+        spans.append((start, pos))
+    return spans
+
+
+def _in_spans(pos: int, spans: list[tuple[int, int]]) -> bool:
+    return any(a <= pos < b for a, b in spans)
+
+
+def _classify_provenance(
+    positions: list[int],
+    fenced: list[tuple[int, int]],
+    example: list[tuple[int, int]],
+) -> Provenance:
+    """Classify a finding by the provenance of every matched position.
+
+    Conservative: if any match sits in the active definition body, the whole
+    finding is treated as active (full weight). Only when *all* matches are
+    illustrative is the finding down-weighted.
+    """
+
+    if not positions:
+        return Provenance.DEFINITION_BODY
+    if all(_in_spans(p, fenced) for p in positions):
+        return Provenance.FENCED_EXAMPLE
+    if all(_in_spans(p, fenced) or _in_spans(p, example) for p in positions):
+        return Provenance.DOCS_EXAMPLE
+    return Provenance.DEFINITION_BODY
 
 
 @dataclass
@@ -108,14 +169,21 @@ def assess_agent_file(
 
     findings: list[Finding] = []
     roots = [p.parent] + [Path(r) for r in (resolve_roots or [])]
+    fenced = _fenced_spans(text)
+    example = _example_spans(text)
 
     # --- Rule 1: dangling asset references --------------------------------
-    referenced = sorted({m.group("path") for m in _ASSET_RE.finditer(text)})
+    ref_positions: dict[str, list[int]] = {}
+    for m in _ASSET_RE.finditer(text):
+        ref_positions.setdefault(m.group("path"), []).append(m.start())
+    referenced = sorted(ref_positions)
     dangling: list[str] = []
+    dangling_positions: list[int] = []
     for ref in referenced:
         rel = ref.replace("\\", "/")
         if not any((root / rel).exists() for root in roots):
             dangling.append(ref)
+            dangling_positions.extend(ref_positions[ref])
     if dangling:
         findings.append(
             Finding(
@@ -135,6 +203,7 @@ def assess_agent_file(
                     "'Always reference' instructions silently no-op or error, "
                     "degrading output quality without the operator knowing."
                 ),
+                provenance=_classify_provenance(dangling_positions, fenced, example),
             )
         )
 
@@ -157,6 +226,7 @@ def assess_agent_file(
                     ),
                     evidence_refs=[str(p)],
                     impact="Relative asset paths resolve against a non-existent root.",
+                    provenance=_classify_provenance([wm.start()], fenced, example),
                 )
             )
             break
@@ -185,11 +255,14 @@ def assess_agent_file(
         )
 
     # --- Rule 4: hardcoded external URLs ----------------------------------
-    urls = sorted({
-        u for u in _URL_RE.findall(text)
-        if not any(a in u.lower() for a in _URL_ALLOW)
-    })
+    url_positions: dict[str, list[int]] = {}
+    for m in _URL_RE.finditer(text):
+        u = m.group(0)
+        if not any(a in u.lower() for a in _URL_ALLOW):
+            url_positions.setdefault(u, []).append(m.start())
+    urls = sorted(url_positions)
     if urls:
+        flat_positions = [pos for u in urls for pos in url_positions[u]]
         findings.append(
             Finding(
                 id="SA-04",
@@ -202,6 +275,7 @@ def assess_agent_file(
                 remediation="Make external endpoints configurable and allowlisted.",
                 evidence_refs=[str(p)],
                 impact="Hardcoded endpoints reduce portability and can leak intent.",
+                provenance=_classify_provenance(flat_positions, fenced, example),
             )
         )
 
@@ -219,6 +293,7 @@ def assess_agent_file(
                 remediation="Add a version field and an integrity/hash marker.",
                 evidence_refs=[str(p)],
                 impact="Assurance freshness and definition-hash binding cannot be established.",
+                provenance=Provenance.ABSENCE,
             )
         )
 
@@ -253,6 +328,7 @@ def assess_agent_file(
                 ),
                 evidence_refs=[str(p)],
                 impact="Raises exposure to direct and indirect prompt injection.",
+                provenance=Provenance.ABSENCE,
             )
         )
 
@@ -298,9 +374,10 @@ def _assurance_from_findings(
     worst: dict[str, Severity] = {}
     for f in findings:
         fam_id = f.control_family.split()[0]
+        sev = f.effective_severity()
         cur = worst.get(fam_id)
-        if cur is None or sev_penalty[f.severity] < sev_penalty[cur]:
-            worst[fam_id] = f.severity
+        if cur is None or sev_penalty[sev] < sev_penalty[cur]:
+            worst[fam_id] = sev
 
     families: list[FamilyEvaluation] = []
     for fid, name, weight in CONTROL_FAMILIES:

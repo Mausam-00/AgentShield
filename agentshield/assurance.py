@@ -143,8 +143,8 @@ def _derive_posture(
     has_owner_evidence: bool,
 ) -> Posture:
     open_findings = [f for f in findings if f.is_open()]
-    has_critical = any(f.severity == Severity.CRITICAL for f in open_findings)
-    has_high = any(f.severity == Severity.HIGH for f in open_findings)
+    has_critical = any(f.effective_severity() == Severity.CRITICAL for f in open_findings)
+    has_high = any(f.effective_severity() == Severity.HIGH for f in open_findings)
 
     # Hard BLOCK conditions.
     if has_critical:

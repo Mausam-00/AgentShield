@@ -60,6 +60,7 @@ from agentshield import (  # noqa: E402
 )
 from agentshield.responsible_ai import default_pillars  # noqa: E402
 from agentshield.static_assess import assess_agent_file  # noqa: E402
+from agentshield.compliance import compliance_to_report  # noqa: E402
 
 NOW = datetime.now(timezone.utc)
 CAPS = ["read_definition"]
@@ -289,6 +290,7 @@ def build_report(agent_path: str) -> dict:
     report["responsible_ai"] = _responsible_ai_block(
         assessment.subject, assessment.definition_text, live
     )
+    report["compliance"] = compliance_to_report(assessment.assurance)
     report["subject"]["name"] = assessment.subject
 
     # Optional: let the AgentShield agent (Azure OpenAI) author the analysis,

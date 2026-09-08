@@ -72,6 +72,23 @@ class EvidenceState(enum.Enum):
     UNAVAILABLE = "Unavailable"
 
 
+class Provenance(enum.Enum):
+    """Where in the assessed definition a finding's evidence physically sits.
+
+    Lower-confidence provenances (illustrative quotes, fenced code samples,
+    documentation/example sections) are down-weighted so a risky *example*
+    inside a definition does not score like a risky *active* instruction. This
+    only ever reduces a finding's effect on posture; it never upgrades posture
+    and never suppresses the finding, which stays visible with its source.
+    """
+
+    DEFINITION_BODY = "Definition body"       # active instruction, full weight
+    ABSENCE = "Whole-definition check"        # absence check, full weight
+    QUOTED_BLOCK = "Quoted block"             # illustrative inline quote
+    FENCED_EXAMPLE = "Fenced code example"    # inside ``` fences
+    DOCS_EXAMPLE = "Documentation example"    # under an example/sample heading
+
+
 class Lifecycle(enum.Enum):
     ACTIVE = "Active"
     REVIEW = "Review"
@@ -94,6 +111,20 @@ SEVERITY_ORDER = {
     Severity.MEDIUM: 2,
     Severity.HIGH: 3,
     Severity.CRITICAL: 4,
+}
+
+# Inverse of SEVERITY_ORDER, used to map a downgraded rank back to a Severity.
+_SEVERITY_BY_ORDER = {rank: sev for sev, rank in SEVERITY_ORDER.items()}
+
+# Confidence weight applied to a finding based on the provenance of its
+# evidence. Full weight (1.0) means the finding lands at its stated severity;
+# lower weights down-rank its effect on posture without hiding it.
+PROVENANCE_WEIGHT = {
+    Provenance.DEFINITION_BODY: 1.0,
+    Provenance.ABSENCE: 1.0,
+    Provenance.QUOTED_BLOCK: 0.5,
+    Provenance.FENCED_EXAMPLE: 0.25,
+    Provenance.DOCS_EXAMPLE: 0.25,
 }
 
 # Precedence for combining matched runtime controls (most restrictive wins).
@@ -139,9 +170,39 @@ class Finding:
     impact: str = ""
     owner: Optional[str] = None
     resolved: bool = False
+    provenance: Provenance = Provenance.DEFINITION_BODY
+    confidence_weight: Optional[float] = None
 
     def is_open(self) -> bool:
         return not self.resolved
+
+    def weight(self) -> float:
+        """Confidence weight in [0, 1]; explicit override wins over provenance."""
+
+        if self.confidence_weight is not None:
+            return max(0.0, min(1.0, self.confidence_weight))
+        return PROVENANCE_WEIGHT.get(self.provenance, 1.0)
+
+    def effective_severity(self) -> "Severity":
+        """Severity after applying provenance confidence weighting.
+
+        A low-confidence source (fenced example, docs sample) down-ranks the
+        finding so an illustrative snippet cannot drive posture like an active
+        instruction. CRITICAL never down-ranks (fail-closed), and the result is
+        never lower than INFO. Full-weight findings are unchanged.
+        """
+
+        if self.severity == Severity.CRITICAL:
+            return self.severity
+        weight = self.weight()
+        if weight >= 0.75:
+            steps = 0
+        elif weight >= 0.5:
+            steps = 1
+        else:
+            steps = 2
+        rank = max(0, SEVERITY_ORDER[self.severity] - steps)
+        return _SEVERITY_BY_ORDER[rank]
 
 
 @dataclass

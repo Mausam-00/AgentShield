@@ -285,6 +285,10 @@ section[id]{scroll-margin-top:22px}
 .find h3{margin:2px 0 8px;font-size:15px}
 .find p{margin:6px 0;font-size:13px;color:var(--mut);line-height:1.5}
 .find p b{color:var(--ink)}
+.prov{font-size:11px;color:var(--mut);border:1px dashed var(--line);border-radius:8px;padding:4px 8px;display:inline-block}
+.cframe{margin:14px 0}
+.cframe h3{margin:6px 0;font-size:15px}
+.cframe .tags{margin:8px 0}
 table{width:100%;border-collapse:collapse;background:linear-gradient(160deg,var(--card-a),var(--card-b));
   border-radius:16px;overflow:hidden;border:1px solid var(--line);font-size:13px}
 th,td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--line)}
@@ -626,12 +630,26 @@ def render_findings(data: dict[str, Any]) -> str:
         hypo_html = f'<p><b>Hypothesis:</b> <i>{esc(hypo)}</i></p>' if hypo else ""
         impact = f.get("impact")
         impact_html = f'<p><b>Impact:</b> {esc(impact)}</p>' if impact else ""
+        prov = f.get("provenance")
+        conf = f.get("confidence")
+        eff = f.get("effective_severity")
+        prov_bits = []
+        if prov:
+            prov_bits.append(f"Source: {esc(prov)}")
+        if conf is not None:
+            prov_bits.append(f"confidence {esc(conf)}")
+        if eff and eff != f.get("severity"):
+            prov_bits.append(f"effective {esc(eff)}")
+        prov_html = (
+            f'<p class="prov">{" &middot; ".join(prov_bits)}</p>' if prov_bits else ""
+        )
         cards.append(f"""
       <div class="find {sc}">
         <div class="row"><span class="fid">{esc(f.get('id'))}</span>
           <span class="badge {badge}">{esc(f.get('severity'))}</span>
           <span class="fam">{esc(f.get('control_family'))}</span></div>
         <h3>{esc(f.get('title'))}</h3>
+        {prov_html}
         <p><b>Observation:</b> {esc(f.get('observation'))}</p>
         {impact_html}{hypo_html}
         <p><b>Remediation:</b> {esc(f.get('remediation'))}</p>
@@ -641,6 +659,57 @@ def render_findings(data: dict[str, Any]) -> str:
     {BACKBAR}
     <h2>Findings &amp; Evidence</h2>
     <div class="finds">{''.join(cards)}</div>
+  </section>"""
+
+
+_COMPLIANCE_STATUS_CLASS = {
+    "Evidenced": "g-good",
+    "Partial": "g-fair",
+    "Declared (not tested)": "g-fair",
+    "Gap": "g-weak",
+    "Unevidenced": "g-gap",
+}
+
+
+def render_compliance(data: dict[str, Any]) -> str:
+    compliance = data.get("compliance")
+    if not compliance or not compliance.get("frameworks"):
+        return ""
+    blocks = []
+    for fw in compliance.get("frameworks") or []:
+        rows = []
+        for c in fw.get("controls") or []:
+            status = str(c.get("status") or "")
+            cls = _COMPLIANCE_STATUS_CLASS.get(status, "g-gap")
+            fams = ", ".join(c.get("families") or [])
+            rows.append(
+                f"<tr><td><b>{esc(c.get('control_id'))}</b> {esc(c.get('control_title'))}</td>"
+                f"<td>{esc(fams)}</td>"
+                f"<td><span class='dot {cls}'></span>{esc(status)}</td>"
+                f"<td>{esc(c.get('note'))}</td></tr>"
+            )
+        summary = fw.get("summary") or {}
+        chips = " ".join(
+            f"<span class='chip'>{esc(k)}: {esc(v)}</span>"
+            for k, v in summary.items()
+            if v
+        )
+        blocks.append(f"""
+      <div class="cframe">
+        <h3>{esc(fw.get('name'))} <span class="sub">v{esc(fw.get('version'))}</span></h3>
+        <div class="tags">{chips}</div>
+        <table><tr><th>Mapped control</th><th>Families</th><th>Coverage</th><th>Note</th></tr>
+        {''.join(rows)}</table>
+      </div>""")
+    disclaimer = esc(compliance.get("disclaimer"))
+    version = esc(compliance.get("map_version"))
+    return f"""
+  <section id="compliance" class="panel section">
+    {BACKBAR}
+    <h2>Compliance Framework Mapping</h2>
+    <p class="sub">Advisory &middot; not certification &middot; map {version}</p>
+    {''.join(blocks)}
+    <p class="note">{disclaimer}</p>
   </section>"""
 
 
@@ -765,6 +834,8 @@ def _nav(data: dict[str, Any]) -> str:
         items.append(("#families", "Families", "layers"))
     if data.get("findings"):
         items.append(("#findings", "Findings", "alert"))
+    if data.get("compliance"):
+        items.append(("#compliance", "Compliance", "doc"))
     if data.get("policy_matches"):
         items.append(("#policy", "Policy", "doc"))
     if data.get("platform_capabilities"):
@@ -853,6 +924,7 @@ def build_html(data: dict[str, Any]) -> str:
     {render_rai(safe)}
     {render_gates(safe)}
     {render_findings(safe)}
+    {render_compliance(safe)}
     {render_policy(safe)}
     {render_capabilities(safe)}
     {render_cols(safe)}

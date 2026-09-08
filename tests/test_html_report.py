@@ -227,5 +227,53 @@ class EndToEndFileTests(unittest.TestCase):
             self.assertIn("SIMULATION", content)
 
 
+class ComplianceAndProvenanceTests(unittest.TestCase):
+    def test_compliance_panel_and_provenance_render_safely(self):
+        data = _base_report(
+            findings=[
+                {
+                    "id": "SA-04",
+                    "severity": "LOW",
+                    "effective_severity": "INFO",
+                    "control_family": "ASF-05 Secret handling and output protection",
+                    "evidence_state": "Observed",
+                    "provenance": "Fenced code example",
+                    "confidence": 0.25,
+                    "title": "Hardcoded external endpoint(s)",
+                    "observation": "External URL(s): https://api.acme-corp.io/v1",
+                    "remediation": "Make external endpoints configurable.",
+                    "hypothesis": None,
+                }
+            ],
+            compliance={
+                "map_version": "agentshield-compliance-map-1.0.0",
+                "disclaimer": "Advisory mapping; not a certification.",
+                "frameworks": [
+                    {
+                        "key": "owasp_llm",
+                        "name": "OWASP Top 10 for LLM Applications",
+                        "version": "2025",
+                        "summary": {"Gap": 1, "Declared (not tested)": 4},
+                        "controls": [
+                            {
+                                "control_id": "LLM01",
+                                "control_title": "Prompt Injection",
+                                "families": ["ASF-01"],
+                                "status": "Gap",
+                                "note": "Open HIGH finding weakens this family.",
+                            }
+                        ],
+                    }
+                ],
+            },
+        )
+        doc = GEN.build_html(data)  # must not raise
+        self.assertIn("OWASP Top 10 for LLM Applications", doc)
+        self.assertIn("LLM01", doc)
+        self.assertIn("Fenced code example", doc)
+        # URLs inside evidence stay defanged / self-contained.
+        self.assertNotIn("https://api", doc.lower())
+
+
 if __name__ == "__main__":
     unittest.main()
