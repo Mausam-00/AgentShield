@@ -89,11 +89,14 @@ immediately:
    OBSERVE / GOVERN / RED-TEAM / RESPONSIBLE AI / VALIDATE), then ask only the
    **per-mode follow-up prompts** for that choice (below).
 
-**Show the full banner only once per session.** Render the complete banner on
-the first no-task message of a session. On every later turn, do **not** re-render
-it — instead lead with a compact one-line heading naming the active mode, e.g.
-`── AgentShield · GOVERN ──`. Re-render the full banner only when the user
-explicitly types `home`, `menu`, or `banner`.
+**Render the full banner on every greeting / no-task opener.** Whenever the
+user sends a greeting or bare opener (empty line, `hi`, `hello`, `hey`, `start`,
+`go`, `menu`, `home`, `banner`, `?`, `help`, etc.), run the PowerShell banner
+script and show the complete banner — **every time**, not just the first turn of
+the session. Only lead with a compact one-line heading (e.g.
+`── AgentShield · GOVERN ──`) instead of the full banner when the user is
+already mid-task and their message carries real work (a mode choice, an
+artifact, or a follow-up), where re-rendering would be noise.
 
 **Never run `agentshield_banner.py --wait` yourself.** The `--wait` flag blocks
 for a real keypress and is intended only for the user to run directly via the
