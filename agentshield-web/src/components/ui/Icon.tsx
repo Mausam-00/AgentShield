@@ -36,6 +36,7 @@ import {
   Command,
   Search,
   CornerDownLeft,
+  ArrowLeft,
   type LucideIcon,
 } from "lucide-react";
 
@@ -75,6 +76,7 @@ const map: Record<string, LucideIcon> = {
   Command,
   Search,
   CornerDownLeft,
+  ArrowLeft,
 };
 
 export function Icon({

@@ -382,6 +382,14 @@ export function AboutOverlay() {
 
           {/* actions */}
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <button
+              type="button"
+              onClick={close}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.03] px-5 py-2.5 text-sm font-semibold text-white/85 transition-colors hover:border-white/25 hover:bg-white/[0.07]"
+            >
+              <Icon name="ArrowLeft" className="h-4 w-4" />
+              Back to site
+            </button>
             <Link
               href="/#demo"
               onClick={close}
@@ -449,6 +457,15 @@ export function AboutOverlay() {
       </motion.div>
 
       {/* ------------------------------------------------------------- chrome */}
+      <motion.button
+        onClick={close}
+        aria-label="Back to site"
+        style={{ opacity: chromeOpacity }}
+        className="fixed left-4 top-4 z-[40] inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-3.5 py-2 text-sm font-semibold text-white/80 backdrop-blur transition-colors hover:border-white/30 hover:bg-white/[0.08] hover:text-white sm:left-6 sm:top-6"
+      >
+        <Icon name="ArrowLeft" className="h-4 w-4" />
+        Back
+      </motion.button>
       <motion.button
         onClick={close}
         aria-label="Close About"
