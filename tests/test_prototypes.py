@@ -432,6 +432,42 @@ class ShowcaseRenderTests(unittest.TestCase):
         for token in ("<script", "http://", "https://", "javascript:", "<iframe"):
             self.assertNotIn(token, doc.lower())
 
+    def test_compliance_kpi_card_in_overview(self):
+        dash = self._dashboard()
+        data = {
+            "trace_id": "t", "timestamp_utc": "2026-01-01T00:00:00Z",
+            "mode": "OBSERVE", "simulation": True,
+            "subject": {"name": "x", "owner": None, "sponsor": None},
+            "assurance": {"posture": "WARN", "score": 60, "coverage": 0.6,
+                          "confidence": "MEDIUM", "audit_version": "v1",
+                          "definition_hash": None, "tool_manifest_hash": None},
+            "runtime": None, "findings": [], "coverage_limitations": [],
+            "observations": [], "hypotheses": [], "policy_matches": [],
+            "approval": None, "plan": None, "validation": None,
+            "evidence_summary": {"records": 5},
+            "limitations": [], "accountability_statement": "owner accountable.",
+            "compliance": {
+                "map_version": "agentshield-compliance-map-1.0.0",
+                "disclaimer": "Advisory mapping; not a certification.",
+                "frameworks": [
+                    {"key": "owasp_llm", "name": "OWASP Top 10 for LLM Applications",
+                     "version": "2025", "summary": {"Gap": 2, "Declared (not tested)": 3},
+                     "controls": []},
+                    {"key": "nist_ai_rmf", "name": "NIST AI RMF", "version": "1.0",
+                     "summary": {"Gap": 1, "Declared (not tested)": 2}, "controls": []},
+                ],
+            },
+        }
+        doc = dash.build_html(data)
+        # KPI card lives in the overview and links to the compliance section.
+        overview = doc.split('id="overview"', 1)[1].split("</section>", 1)[0]
+        self.assertIn("Compliance Mapping", overview)
+        self.assertIn('href="#compliance"', overview)
+        # 2 + 1 = 3 advisory gaps aggregated across the two frameworks.
+        self.assertIn("3", overview)
+        self.assertIn("2 frameworks mapped", overview)
+        self.assertIn("Not certification", overview)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -409,6 +409,23 @@ def render_kpis(data: dict[str, Any]) -> str:
         f'<div class="sev-mini"><span class="s-high">{highs} High</span>'
         f'<span class="s-med">{meds} Med</span><span class="s-low">{lows} Low</span></div></a>'
     )
+    compliance = data.get("compliance")
+    if isinstance(compliance, dict) and compliance.get("frameworks"):
+        frameworks = compliance.get("frameworks") or []
+        gaps = 0
+        for fw in frameworks:
+            summary = fw.get("summary") or {}
+            for k, v in summary.items():
+                if str(k).lower().startswith("gap") and isinstance(v, (int, float)):
+                    gaps += int(v)
+        gcol = "#f87171" if gaps else "#34d399"
+        fw_txt = f"{len(frameworks)} framework{'s' if len(frameworks) != 1 else ''} mapped"
+        cards.append(
+            f'<a class="card cardlink" href="#compliance"><p class="k-title">Compliance Mapping</p>'
+            f'<div class="big" style="color:{gcol}">{gaps}</div>'
+            f'<p class="sub" style="margin-top:8px">Advisory gaps &middot; {esc_raw(fw_txt)}</p>'
+            f'<p class="sub" style="margin-top:4px">Not certification &middot; tap to view</p></a>'
+        )
     return (f'<section id="overview" class="kpis">{"".join(cards)}</section>')
 
 
