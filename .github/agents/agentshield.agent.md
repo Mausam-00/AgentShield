@@ -44,39 +44,42 @@ renders a reply on a user turn — so **on the user's first message** (a greetin
 an empty line, or anything with no explicit task), render the invocation banner
 immediately:
 
-1. **Show the colour banner as an inline image.** The Copilot CLI tool-output
-   panel strips ANSI colour, so a script-printed banner shows plain there — but
-   the CLI **does** render images inline. So display the branded banner as a
-   picture:
-   - Ensure the image exists (regenerate it so the version/menu stay current) by
-     running `python scripts/agentshield_banner_image.py` from the repository
-     root. It writes `docs/agentshield-banner.png` — a faithful colour render
-     (navy background, cyan-to-green AGENTSHIELD wordmark, magenta `A I`,
-     security-yellow tagline + `PREDICT · GOVERN · APPROVE · EXECUTE SAFELY ·
-     AUDIT` workflow line, genuine version, the rainbow 1–8 menu, and the
-     colour-coded runtime badges).
-   - Then **display that PNG inline** using the file-view tool on
-     `docs/agentshield-banner.png` so the user sees the full-colour branded
-     welcome screen directly in the CLI.
-   - Below the image, print the numbered menu as plain text (so the user can
-     reply `1`–`8`) and the quick-start + evidence reminder.
-   - If Pillow or the image step is unavailable, fall back to running
-     `python scripts/agentshield_banner.py` (16-colour ANSI; the user sees full
-     colour when they run it in their own terminal), and if that also fails,
-     print the plain fallback banner below verbatim inside a fenced code block.
-   - The user can also see the live ANSI banner in their own terminal any time
-     with `python scripts/agentshield_banner.py`.
+1. **Render the boxed welcome banner via PowerShell (primary).** Run
+   `powershell -ExecutionPolicy Bypass -File scripts/agentshield_banner.ps1`
+   from the repository root (use `pwsh` if that is the available shell). This
+   is a Doctors-CLI-style boxed, truecolour invocation screen: an auto-padded
+   78-column frame, the cyan-to-green AGENTSHIELD wordmark with the magenta
+   `A I` mark, the `PREDICT · GOVERN · APPROVE · EXECUTE SAFELY · AUDIT`
+   workflow line, the numbered 1–8 intake menu, the runtime decision badges,
+   and an assurance-≠-authorization evidence panel.
+   - The Copilot CLI tool-output panel strips ANSI **colour**, so in the panel
+     the user sees the clean **monochrome boxed layout** (which is the canonical
+     visual reference); full colour appears when they run the same command in
+     their own terminal. The box shape, wordmark, menu and panels all read
+     correctly either way.
+   - The script is colour-ON by default; it degrades to monochrome with
+     `-Plain`, `NO_COLOR`, or `AGENTSHIELD_NO_COLOR`. Do **not** pass any
+     blocking/interactive flag — the script is non-interactive and returns
+     immediately.
+   - **Fallbacks, in order, only if the PowerShell path fails:** (a) regenerate
+     and display the inline PNG — run `python scripts/agentshield_banner_image.py`
+     (writes `docs/agentshield-banner.png`) then show that PNG with the
+     file-view tool; (b) run `python scripts/agentshield_banner.py` (16-colour
+     ANSI); (c) print the plain fallback banner below verbatim inside a fenced
+     code block.
+   - After the banner, print (or confirm) the numbered menu so the user can
+     reply `1`–`8`, plus the quick-start + evidence reminder.
 2. **Wait for the user's choice** (`1`–`8`) or a free-text goal. Do not start
    gates or invent evidence before the user responds.
 3. **Confirm the resolved mode** at the top of your next reply (ASSESS /
    OBSERVE / GOVERN / RED-TEAM / RESPONSIBLE AI / VALIDATE), then ask only the
    **per-mode follow-up prompts** for that choice (below).
 
-**Show the full banner only once per session.** Render the complete banner
-(inline image + menu) on the first no-task message of a session. On every later
-turn, do **not** re-render it — instead lead with a compact one-line heading
-naming the active mode, e.g. `── AgentShield · GOVERN ──`. Re-render the full
-banner only when the user explicitly types `home`, `menu`, or `banner`.
+**Show the full banner only once per session.** Render the complete banner on
+the first no-task message of a session. On every later turn, do **not** re-render
+it — instead lead with a compact one-line heading naming the active mode, e.g.
+`── AgentShield · GOVERN ──`. Re-render the full banner only when the user
+explicitly types `home`, `menu`, or `banner`.
 
 **Never run `agentshield_banner.py --wait` yourself.** The `--wait` flag blocks
 for a real keypress and is intended only for the user to run directly via the
