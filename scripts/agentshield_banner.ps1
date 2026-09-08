@@ -74,10 +74,6 @@ function Bx($c) {
 function Hr($left, $right) {
     [Console]::WriteLine("$P$left$([string]([char]0x2550) * $WIDTH)$right$R")
 }
-function Menu($n, $name, $desc) {
-    $field = $name.PadRight(12)
-    Bx ("   $C$BD$n$R  $W$BD$field$R$L$desc$R")
-}
 
 # ---- wordmark rows (single-quoted: backslash / backtick / pipe are literal) --
 $w0 = '           _____ ______ _   _ _______ _____ _    _ _____ ______ _      _____'
@@ -110,16 +106,13 @@ Bx ""
 
 Hr ([char]0x2560) ([char]0x2563)                      # section rule
 Bx ""
-Bx ("   $BD$P" + [char]0x2726 + " WHAT WOULD YOU LIKE TO DO?" + "$R")
+Bx ("   $BD$P" + [char]0x2726 + " WHAT IT DOES" + "$R")
+Bx ("       $C" + [char]0x25B8 + "$R ${L}ASSESS agents " + [char]0x00B7 + " OBSERVE actions " + [char]0x00B7 + " GOVERN with 7 deterministic gates$R")
+Bx ("       $C" + [char]0x25B8 + "$R ${L}RED-TEAM " + [char]0x00B7 + " RESPONSIBLE AI (6 pillars) " + [char]0x00B7 + " VALIDATE " + [char]0x00B7 + " REPORT$R")
+Bx ("       $C" + [char]0x25B8 + "$R ${L}Every decision recorded, versioned, and evidence-bound$R")
 Bx ""
-Menu 1 'ASSESS'      'an agent, MCP/tool manifest or prompt -> findings'
-Menu 2 'OBSERVE'     'a proposed action -> predicted impact + would-be verdict'
-Menu 3 'GOVERN'      '7 gates -> ALLOW/TRANSFORM/APPROVE/ESCALATE/DENY'
-Menu 4 'RED-TEAM'    'static probe -> ASR, refusal, leakage, injection x9'
-Menu 5 'RESPONSIBLE' 'score 6 RAI pillars -> RAI-PASS / RAI-WARN / RAI-BLOCK'
-Menu 6 'VALIDATE'    'approved action + plan vs observed -> deviation flags'
-Menu 7 'REPORT'      'HTML evidence report (explicit request only)'
-Menu 8 'NOT SURE'    'describe your situation -> I pick the right mode'
+Bx ("   $BD$P" + [char]0x2699 + " LOADED" + "$R")
+Bx ("       ${L}7 gates " + [char]0x00B7 + " 21 controls " + [char]0x00B7 + " 6 RAI pillars " + [char]0x00B7 + " 9 red-team families$R")
 Bx ""
 Bx ("   ${Gn}[ ALLOW ]$R  $C[ TRANSFORM ]$R  $A[ APPROVE ]$R  $O[ ESCALATE ]$R  $Rd[ DENY ]$R")
 Bx ""
@@ -135,7 +128,7 @@ Bx ""
 Bx ("   $BD$Y" + [char]0x26A1 + " AI advises " + [char]0x2014 + " it never authorizes." + "$R$L  Always verify findings.$R")
 Bx ""
 Bx ("   ${M}Quick start:$R ${L}Assess ~/.copilot/Agents/dr-dnd.agent.md$R")
-Bx ("   $C$BD" + "Reply 1-8, or just describe your goal." + "$R")
+Bx ("   $C$BD" + "Describe your goal to begin." + "$R$L" + "  Type 'menu' for the full mode list." + "$R")
 Bx ""
 Hr ([char]0x255A) ([char]0x255D)                      # bottom border
 [Console]::WriteLine("")

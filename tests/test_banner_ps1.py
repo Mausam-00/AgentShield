@@ -61,18 +61,24 @@ class TestBannerPs1(unittest.TestCase):
         self.assertTrue(any(ln.startswith("\u2554") for ln in self.lines))  # ╔
         self.assertTrue(any(ln.startswith("\u255a") for ln in self.lines))  # ╚
 
-    def test_all_eight_menu_modes_present(self) -> None:
+    def test_capabilities_and_loaded_panels(self) -> None:
+        self.assertIn("WHAT IT DOES", self.plain)
+        self.assertIn("LOADED", self.plain)
         for token in (
-            "1  ASSESS",
-            "2  OBSERVE",
-            "3  GOVERN",
-            "4  RED-TEAM",
-            "5  RESPONSIBLE",
-            "6  VALIDATE",
-            "7  REPORT",
-            "8  NOT SURE",
+            "ASSESS agents",
+            "GOVERN with 7 deterministic gates",
+            "RESPONSIBLE AI (6 pillars)",
+            "7 gates",
+            "21 controls",
+            "6 RAI pillars",
+            "9 red-team families",
         ):
-            self.assertIn(token, self.plain, f"menu entry missing: {token}")
+            self.assertIn(token, self.plain, f"info panel missing: {token}")
+
+    def test_no_interactive_numbered_menu(self) -> None:
+        # The banner is branding-only (Doctors-CLI style); no "reply 1-8" menu.
+        self.assertNotIn("WHAT WOULD YOU LIKE TO DO", self.plain)
+        self.assertNotIn("Reply 1-8", self.plain)
 
     def test_runtime_decision_badges_present(self) -> None:
         for badge in ("[ ALLOW ]", "[ TRANSFORM ]", "[ APPROVE ]", "[ ESCALATE ]", "[ DENY ]"):
