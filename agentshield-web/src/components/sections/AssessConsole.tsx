@@ -75,6 +75,49 @@ function ScoreRing({ score, posture }: { score: number; posture: string }) {
   );
 }
 
+function DeltaStat({
+  label,
+  before,
+  after,
+  betterWhenLower = false,
+  asPct = false,
+}: {
+  label: string;
+  before: number | null;
+  after: number | null;
+  betterWhenLower?: boolean;
+  asPct?: boolean;
+}) {
+  const show = (v: number | null) => (v == null ? "—" : asPct ? `${Math.round(v * 100)}%` : `${v}`);
+  const b = before ?? 0;
+  const a = after ?? 0;
+  const rawDiff = a - b;
+  const diff = asPct ? Math.round(a * 100) - Math.round(b * 100) : rawDiff;
+  const improved = betterWhenLower ? rawDiff < 0 : rawDiff > 0;
+  const worse = betterWhenLower ? rawDiff > 0 : rawDiff < 0;
+  const tone = improved
+    ? "text-emerald-300 bg-emerald-400/10 border-emerald-400/30"
+    : worse
+      ? "text-rose-300 bg-rose-400/10 border-rose-400/30"
+      : "text-white/45 bg-white/[0.03] border-white/10";
+  const sign = diff > 0 ? "+" : "";
+  const deltaTxt = diff === 0 ? "no change" : `${sign}${diff}${asPct ? " pts" : ""}`;
+  return (
+    <div className="rounded-lg border border-white/8 bg-white/[0.02] p-3">
+      <div className="text-[10px] uppercase tracking-wider text-white/45">{label}</div>
+      <div className="mt-1.5 flex items-center gap-2">
+        <span className="font-mono text-sm text-white/45">{show(before)}</span>
+        <Icon name="ArrowRight" className="h-3.5 w-3.5 text-white/30" />
+        <span className="font-display text-xl font-semibold text-white">{show(after)}</span>
+      </div>
+      <div className={cn("mt-1.5 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold", tone)}>
+        {improved && <Icon name="Check" className="h-3 w-3" />}
+        {deltaTxt}
+      </div>
+    </div>
+  );
+}
+
 function safeName(subject: string): string {
   const cleaned = subject.replace(/\s+/g, "_").replace(/[^A-Za-z0-9._-]/g, "");
   return `AgentShield_AI_Report_${cleaned || "Agent"}.html`;
@@ -97,6 +140,7 @@ export function AssessConsole() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [baseline, setBaseline] = useState<Summary | null>(null);
   const htmlRef = useRef<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -277,6 +321,46 @@ export function AssessConsole() {
                   transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                   className="space-y-4"
                 >
+                  {baseline && baseline !== summary && (
+                    <div className="rounded-xl border border-neon-blue/25 bg-[linear-gradient(120deg,rgba(79,124,255,0.10),rgba(56,225,255,0.06))] p-4">
+                      <div className="mb-3 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                          <Icon name="TrendingDown" className="h-4 w-4 text-neon-cyan" />
+                          Before → After
+                        </div>
+                        <span className="font-mono text-[10px] text-white/45">
+                          {baseline.subject} → {summary.subject}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                        <DeltaStat
+                          label="Assurance score"
+                          before={baseline.assurance_score}
+                          after={summary.assurance_score}
+                        />
+                        <DeltaStat
+                          label="Open findings"
+                          before={baseline.findings_count}
+                          after={summary.findings_count}
+                          betterWhenLower
+                        />
+                        <DeltaStat
+                          label="Defense coverage"
+                          before={baseline.defense_coverage}
+                          after={summary.defense_coverage}
+                          asPct
+                        />
+                        <DeltaStat
+                          label="Residual exposure"
+                          before={baseline.residual_exposure}
+                          after={summary.residual_exposure}
+                          asPct
+                          betterWhenLower
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   {/* Report header */}
                   <div className="flex items-center justify-between gap-3">
                     <div>
@@ -361,6 +445,29 @@ export function AssessConsole() {
                   </div>
 
                   <div className="flex flex-wrap gap-2.5 border-t border-white/10 pt-4">
+                    {baseline === summary ? (
+                      <span className="inline-flex items-center gap-2 rounded-full bg-emerald-400/10 px-4 py-2 text-sm font-medium text-emerald-200 ring-1 ring-emerald-400/25">
+                        <Icon name="Check" className="h-4 w-4" />
+                        Pinned as “before”
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => setBaseline(summary)}
+                        className="inline-flex items-center gap-2 rounded-full bg-white/[0.06] px-4 py-2 text-sm font-medium text-white/80 ring-1 ring-white/15 transition-colors hover:bg-white/[0.1]"
+                      >
+                        <Icon name="Target" className="h-4 w-4 text-neon-cyan" />
+                        {baseline ? "Re-pin as “before”" : "Pin as “before”"}
+                      </button>
+                    )}
+                    {baseline && baseline !== summary && (
+                      <button
+                        onClick={() => setBaseline(null)}
+                        className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-white/55 ring-1 ring-white/10 transition-colors hover:text-white"
+                      >
+                        <Icon name="X" className="h-4 w-4" />
+                        Clear comparison
+                      </button>
+                    )}
                     <button
                       onClick={download}
                       className="inline-flex items-center gap-2 rounded-full bg-white/[0.06] px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/15 transition-colors hover:bg-white/[0.1]"
@@ -376,6 +483,12 @@ export function AssessConsole() {
                       Preview in new tab
                     </button>
                   </div>
+
+                  {baseline == null && (
+                    <p className="text-[11px] leading-relaxed text-white/40">
+                      Tip: pin this run as “before”, remediate the agent, then re-run to see a before → after comparison.
+                    </p>
+                  )}
                 </motion.div>
               ) : (
                 <motion.div
