@@ -46,6 +46,16 @@ _EXAMPLE_HEADING_RE = re.compile(
     r"(?i)^\s*#{1,6}\s.*\b(example|sample|for instance|illustrat|demo)\b"
 )
 
+# Operator control-attestation block: a heading, then bullet lines of the form
+#   - ASF-01: <claim> [evidence: <reference>]
+# Only attestations that cite a non-empty evidence reference are honoured.
+_ATTEST_HEADING_RE = re.compile(r"(?im)^\s*#{1,6}\s*control attestations\b")
+_ATTEST_LINE_RE = re.compile(
+    r"(?im)^\s*[-*]\s*(?P<fam>ASF-\d{2})\s*:\s*(?P<claim>.+?)"
+    r"\s*\[evidence:\s*(?P<ev>[^\]]+?)\s*\]\s*$"
+)
+_FAMILY_IDS = {fid for fid, _name, _weight in CONTROL_FAMILIES}
+
 
 def _fenced_spans(text: str) -> list[tuple[int, int]]:
     """Character spans covered by triple-backtick fenced code blocks."""
@@ -80,6 +90,36 @@ def _example_spans(text: str) -> list[tuple[int, int]]:
 
 def _in_spans(pos: int, spans: list[tuple[int, int]]) -> bool:
     return any(a <= pos < b for a, b in spans)
+
+
+def _parse_attestations(text: str) -> dict[str, str]:
+    """Parse an operator ``## Control attestations`` block.
+
+    Returns ``{family_id: evidence_ref}`` for each control family the operator
+    formally attests to, provided the line cites a non-empty evidence reference.
+    Only lines within the attestation section (its heading up to the next
+    heading of any level) are considered.
+
+    An attestation is a *self-declared* claim backed by a cited artifact. The
+    engine credits it above a bare declaration but never treats it as an
+    independent test: attested families cannot reach HIGH confidence, so a
+    static assessment still cannot certify (PASS). This keeps operators honest
+    while giving structured, evidence-referenced hardening real, bounded credit.
+    """
+
+    m = _ATTEST_HEADING_RE.search(text)
+    if not m:
+        return {}
+    start = m.end()
+    nxt = re.search(r"(?m)^\s*#{1,6}\s", text[start:])
+    section = text[start : start + nxt.start()] if nxt else text[start:]
+    out: dict[str, str] = {}
+    for line in _ATTEST_LINE_RE.finditer(section):
+        fam = line.group("fam").upper()
+        ev = line.group("ev").strip()
+        if fam in _FAMILY_IDS and ev:
+            out.setdefault(fam, ev)
+    return out
 
 
 def _classify_provenance(
@@ -337,6 +377,7 @@ def assess_agent_file(
         findings=findings,
         definition_text=text,
         write_capable=bool(write_tools),
+        attestations=_parse_attestations(text),
     )
 
     return StaticAssessment(
@@ -355,15 +396,19 @@ def _assurance_from_findings(
     findings: list[Finding],
     definition_text: str,
     write_capable: bool,
+    attestations: Optional[dict[str, str]] = None,
 ) -> AssuranceResult:
     """Derive a coarse assurance result from the affected control families.
 
     Each family's maturity is reduced by the most severe open finding that
-    touches it. Families with no finding are treated as DECLARED at maturity 3
-    (documented in the definition but not tested), which keeps the posture at
-    WARN rather than PASS - static inference is never enough for certification.
+    touches it. A family with no open finding is either DECLARED at maturity 3
+    (documented but not tested) or, when the operator supplies an evidence-cited
+    attestation for it, ATTESTED at maturity 4. Attested families are credited
+    above a bare declaration but are never counted as TESTED, so confidence
+    stays below HIGH and the posture cannot reach PASS from static text alone.
     """
 
+    attestations = attestations or {}
     sev_penalty = {
         Severity.CRITICAL: 0,
         Severity.HIGH: 1,
@@ -382,9 +427,17 @@ def _assurance_from_findings(
     families: list[FamilyEvaluation] = []
     for fid, name, weight in CONTROL_FAMILIES:
         if fid in worst:
+            # An open finding always wins over any attestation for that family.
             maturity = sev_penalty[worst[fid]]
             state = EvidenceState.OBSERVED
             note = f"reduced by {worst[fid].value} finding"
+        elif fid in attestations:
+            maturity = 4
+            state = EvidenceState.ATTESTED
+            note = (
+                f"operator-attested (evidence: {attestations[fid]}); "
+                "attested, not independently tested"
+            )
         else:
             maturity = 3
             state = EvidenceState.DECLARED

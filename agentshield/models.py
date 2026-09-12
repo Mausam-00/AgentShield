@@ -67,6 +67,7 @@ class Severity(enum.Enum):
 class EvidenceState(enum.Enum):
     OBSERVED = "Observed"
     DECLARED = "Declared"
+    ATTESTED = "Attested"
     TESTED = "Tested"
     INFERRED = "Inferred"
     UNAVAILABLE = "Unavailable"

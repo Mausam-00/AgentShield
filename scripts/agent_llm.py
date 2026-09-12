@@ -404,40 +404,32 @@ def _merge(base: dict, patch: dict) -> dict:
             if v:
                 report.setdefault("subject", {})[k] = v
 
-    # Assurance (graded)
-    a = patch.get("assurance")
-    if isinstance(a, dict):
-        target = report.setdefault("assurance", {})
-        posture = _enum(a.get("posture"), POSTURES)
-        # Honesty guard: static review never exceeds WARN.
-        if posture == "PASS":
-            posture = "WARN"
-        if posture:
-            target["posture"] = posture
-        score = _clamp_int(a.get("score"), 0, 100)
-        if score is not None:
-            target["score"] = score
-        coverage = _clamp_float(a.get("coverage"), 0.0, 1.0)
-        if coverage is not None:
-            target["coverage"] = coverage
-        confidence = _enum(a.get("confidence"), ("LOW", "MEDIUM", "HIGH"))
-        if confidence:
-            target["confidence"] = confidence
+    # Assurance: the DETERMINISTIC verdict is authoritative. The model never
+    # changes the score, posture, coverage, or confidence - a non-deterministic
+    # narrator must not move the number a deterministic engine computed. (Kept
+    # here as an explicit no-op so the intent is unmistakable.)
 
-    # Runtime decision
-    rt = patch.get("runtime")
-    if isinstance(rt, dict) and isinstance(report.get("runtime"), dict):
-        decision = _enum(rt.get("decision"), DECISIONS)
-        if decision:
-            report["runtime"]["decision"] = decision
+    # Runtime decision is owned by deterministic policy; the model cannot change
+    # it either. Left deterministic on purpose.
 
-    # Findings (core narrative)
-    findings = _findings(patch.get("findings"))
-    if findings:
-        report["findings"] = findings
+    # Findings: the deterministic finding SET is authoritative. The model may
+    # only enrich the WORDING of a finding the engine already raised (matched by
+    # id); it can neither add nor remove findings, nor alter severity, control
+    # family, or provenance. Unmatched model findings are dropped.
+    llm_by_id: dict[str, dict] = {}
+    for f in _findings(patch.get("findings")):
+        llm_by_id.setdefault(f["id"], f)
+    for det in report.get("findings", []):
+        enrich = llm_by_id.get(det.get("id"))
+        if not enrich:
+            continue
+        for field_name in ("title", "observation", "impact", "hypothesis", "remediation"):
+            value = enrich.get(field_name)
+            if value:
+                det[field_name] = value
 
-    # Executive summary + top-level lists (executive summary shown as a finding
-    # so it surfaces in the rendered dashboard).
+    # Executive summary is additive narrative (shown as a leading card), which
+    # is safe: it explains, it does not change any verdict.
     summary = _s(patch.get("executive_summary"))
     if summary:
         report.setdefault("findings", [])
@@ -454,35 +446,17 @@ def _merge(base: dict, patch: dict) -> dict:
                 "remediation": "See findings below for specific remediations.",
             },
         )
-    cov_lims = _str_list(patch.get("coverage_limitations"))
-    if cov_lims:
-        report["coverage_limitations"] = cov_lims
 
-    # Red-team overlay (skeleton keeps families/probes; we enrich signal + notes)
+    # Red-team: deterministic coverage/residual/posture stay authoritative; the
+    # model may only add narrative notes.
     rt_patch = patch.get("redteam")
     if isinstance(rt_patch, dict) and isinstance(report.get("redteam"), dict):
-        signal = _enum(rt_patch.get("posture_signal"), POSTURES)
-        if signal == "PASS":
-            signal = "WARN"
-        if signal:
-            report["redteam"]["posture_signal"] = signal
         notes = _str_list(rt_patch.get("notes"))
         if notes:
             report["redteam"]["notes"] = notes
 
-    # Responsible AI overlay
-    rai_patch = patch.get("responsible_ai")
-    if isinstance(rai_patch, dict) and isinstance(report.get("responsible_ai"), dict):
-        target = report["responsible_ai"]
-        posture = _enum(rai_patch.get("posture"), POSTURES)
-        if posture:
-            target["posture"] = posture
-        rai_findings = _findings(rai_patch.get("findings"))
-        if rai_findings:
-            target["findings"] = rai_findings
-        rai_lims = _str_list(rai_patch.get("coverage_limitations"))
-        if rai_lims:
-            target["coverage_limitations"] = rai_lims
+    # Responsible AI: deterministic posture and pillar findings stay
+    # authoritative. No model override of an advisory-but-computed verdict.
 
     return report
 
