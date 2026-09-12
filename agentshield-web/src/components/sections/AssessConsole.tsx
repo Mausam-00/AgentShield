@@ -11,6 +11,7 @@ type Summary = {
   subject: string;
   assurance_posture: string;
   assurance_score: number;
+  findings_count: number;
   runtime_decision: string;
   redteam_posture: string;
   defense_coverage: number | null;
@@ -308,8 +309,23 @@ export function AssessConsole() {
                           {summary.assurance_score}
                           <span className="text-base font-normal text-white/40">/100</span>
                         </div>
-                        <div className="mt-1 text-xs text-white/50">
-                          Static posture · {summary.assurance_posture}
+                        <div className="mt-1.5">
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+                              summary.findings_count === 0
+                                ? "text-emerald-300 border-emerald-400/30 bg-emerald-400/10"
+                                : "text-amber-300 border-amber-400/30 bg-amber-400/10"
+                            )}
+                          >
+                            <Icon
+                              name={summary.findings_count === 0 ? "ShieldCheck" : "AlertTriangle"}
+                              className="h-3.5 w-3.5"
+                            />
+                            {summary.findings_count === 0
+                              ? "No open findings"
+                              : `${summary.findings_count} open finding${summary.findings_count === 1 ? "" : "s"}`}
+                          </span>
                         </div>
                       </div>
                     </div>

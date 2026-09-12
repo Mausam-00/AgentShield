@@ -416,6 +416,9 @@ def generate(
         "subject": report["subject"]["name"],
         "assurance_posture": report["assurance"]["posture"],
         "assurance_score": report["assurance"]["score"],
+        "findings_count": sum(
+            1 for f in report.get("findings", []) if f.get("id") != "EXEC"
+        ),
         "runtime_decision": report["runtime"]["decision"],
         "redteam_posture": report["redteam"]["posture_signal"],
         "defense_coverage": report["redteam"].get("defense_coverage"),
