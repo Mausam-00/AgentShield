@@ -34,6 +34,11 @@ COPY agentshield/ ./agentshield/
 COPY scripts/ ./scripts/
 COPY .github/ ./.github/
 
+# Demo agent definitions for the live "Before -> After Remediation" showcase
+# route (/api/showcase runs scripts/agentshield_before_after.py, which reads
+# examples/showcase/infra-bot.{before,after}.agent.md).
+COPY examples/ ./examples/
+
 # Pinned LLM-enrichment cache: authored-once narratives so the web app and the
 # CLI render byte-identical reports (agent_llm.py resolves ROOT to /app).
 COPY enrichment_cache/ ./enrichment_cache/

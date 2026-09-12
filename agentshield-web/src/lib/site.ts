@@ -13,6 +13,7 @@ export const nav: NavItem[] = [
   { label: "Home", href: "/" },
   { label: "Platform", href: "/products" },
   { label: "Dashboard", href: "/#dashboard" },
+  { label: "Live Demo", href: "/showcase" },
   { label: "Run the Engine", href: "/#demo" },
   { label: "Contact", href: "/contact" },
 ];
