@@ -35,8 +35,43 @@ const postureStyle: Record<string, string> = {
   "RAI-BLOCK": "text-rose-300 border-rose-400/30 bg-rose-400/10",
 };
 
+const postureHex: Record<string, string> = {
+  PASS: "#34d399",
+  WARN: "#fbbf24",
+  BLOCK: "#fb7185",
+};
+
 function pct(v: number | null): string {
   return v == null ? "—" : `${Math.round(v * 100)}%`;
+}
+
+function ScoreRing({ score, posture }: { score: number; posture: string }) {
+  const radius = 40;
+  const circ = 2 * Math.PI * radius;
+  const clamped = Math.max(0, Math.min(100, score));
+  const dash = (clamped / 100) * circ;
+  const color = postureHex[posture] ?? "#38e1ff";
+  return (
+    <div className="relative grid h-[104px] w-[104px] shrink-0 place-items-center">
+      <svg width="104" height="104" viewBox="0 0 104 104" className="-rotate-90">
+        <circle cx="52" cy="52" r={radius} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="9" />
+        <circle
+          cx="52"
+          cy="52"
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth="9"
+          strokeLinecap="round"
+          strokeDasharray={`${dash} ${circ}`}
+        />
+      </svg>
+      <div className="absolute text-center leading-none">
+        <div className="font-display text-2xl font-bold text-white">{score}</div>
+        <div className="mt-0.5 text-[9px] uppercase tracking-[0.14em] text-white/45">/ 100</div>
+      </div>
+    </div>
+  );
 }
 
 function safeName(subject: string): string {
@@ -241,26 +276,64 @@ export function AssessConsole() {
                   transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                   className="space-y-4"
                 >
-                  <div className={cn("rounded-xl p-5 ring-1", d.bg, d.ring)}>
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2.5">
-                        <span className={cn("h-2.5 w-2.5 rounded-full", d.dot)} />
-                        <span className={cn("font-display text-2xl font-semibold", d.text)}>
+                  {/* Report header */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-[11px] uppercase tracking-[0.18em] text-white/40">
+                        Assessment report
+                      </div>
+                      <div className="mt-0.5 font-display text-lg font-semibold text-white">
+                        {summary.subject}
+                      </div>
+                    </div>
+                    <span
+                      className={cn(
+                        "rounded-full border px-3 py-1 text-xs font-semibold",
+                        postureStyle[summary.assurance_posture] ?? "text-white/70 border-white/15"
+                      )}
+                    >
+                      {summary.assurance_posture}
+                    </span>
+                  </div>
+
+                  {/* Hero: assurance score + runtime decision */}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="flex items-center gap-4 rounded-xl border border-white/8 bg-white/[0.02] p-4">
+                      <ScoreRing score={summary.assurance_score} posture={summary.assurance_posture} />
+                      <div className="min-w-0">
+                        <div className="text-[11px] uppercase tracking-wider text-white/45">
+                          Assurance score
+                        </div>
+                        <div className="mt-1 font-display text-3xl font-semibold text-white">
+                          {summary.assurance_score}
+                          <span className="text-base font-normal text-white/40">/100</span>
+                        </div>
+                        <div className="mt-1 text-xs text-white/50">
+                          Static posture · {summary.assurance_posture}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className={cn("flex flex-col justify-center rounded-xl p-4 ring-1", d.bg, d.ring)}>
+                      <div className="text-[11px] uppercase tracking-wider text-white/45">
+                        Runtime decision
+                      </div>
+                      <div className="mt-1.5 flex items-center gap-2.5">
+                        <span className={cn("h-3 w-3 rounded-full", d.dot)} />
+                        <span className={cn("font-display text-3xl font-semibold", d.text)}>
                           {summary.runtime_decision}
                         </span>
                       </div>
-                      <span className="rounded-full border border-white/12 bg-black/20 px-3 py-1 font-mono text-xs text-white/70">
-                        {summary.subject}
-                      </span>
+                      <p className="mt-2 text-[11px] leading-relaxed text-white/45">
+                        Deterministic runtime verdict — the assurance posture is advisory, not authorization.
+                      </p>
                     </div>
-                    <p className="mt-2 text-[11px] text-white/45">
-                      Runtime decision for a read-only inspection — the assurance posture is advisory, not authorization.
-                    </p>
                   </div>
 
+                  {/* Secondary signals */}
                   <div className="grid grid-cols-2 gap-2.5">
-                    <PosturePill label="Assurance" value={summary.assurance_posture} />
                     <PosturePill label="Red-team" value={summary.redteam_posture} />
+                    <PosturePill label="Responsible AI" value={summary.rai_posture} />
                     <div className="flex items-center justify-between gap-3 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2">
                       <span className="text-[11px] uppercase tracking-wider text-white/45">Defense coverage</span>
                       <span className="font-mono text-sm text-white/85">{pct(summary.defense_coverage)}</span>
@@ -268,11 +341,6 @@ export function AssessConsole() {
                     <div className="flex items-center justify-between gap-3 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2">
                       <span className="text-[11px] uppercase tracking-wider text-white/45">Residual exposure</span>
                       <span className="font-mono text-sm text-amber-200/90">{pct(summary.residual_exposure)}</span>
-                    </div>
-                    <PosturePill label="Responsible AI" value={summary.rai_posture} />
-                    <div className="flex items-center justify-between gap-3 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2">
-                      <span className="text-[11px] uppercase tracking-wider text-white/45">Assurance score</span>
-                      <span className="font-mono text-sm text-white/85">{summary.assurance_score}/100</span>
                     </div>
                   </div>
 
