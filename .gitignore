@@ -11,3 +11,11 @@ build/
 generated-reports/
 examples/demo-report.html
 *.local.json
+
+# Generated per-agent reports and remediation outputs (regenerable)
+docs/AgentShield_AI_Report_*.html
+*.backup-*.html
+docs/showcase/
+examples/showcase/*.remediated.agent.md
+examples/showcase/*.remediation.diff
+examples/showcase/*.remediated.diff
