@@ -24,20 +24,20 @@ export function USPSection() {
         subtitle="Six differentiators that separate a demonstrable safety envelope from a best-effort guardrail. Click any card for more."
       />
 
-      <RevealGroup className="mt-16 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <RevealGroup className="usp-grid mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {usps.map((u, i) => {
           const isOpen = open === i;
           return (
-            <RevealItem key={u.title}>
+            <RevealItem key={u.title} className={i === 0 || i === 5 ? "lg:col-span-2" : ""}>
               <button
                 onClick={() => setOpen(isOpen ? null : i)}
                 aria-expanded={isOpen}
                 className={cn(
-                  "group relative flex h-full w-full flex-col overflow-hidden rounded-2xl glass p-6 text-left shadow-card transition-all duration-300",
+                  "feature-panel group relative flex h-full w-full flex-col overflow-hidden rounded-2xl p-7 text-left transition-all duration-300",
                   isOpen ? "ring-1 ring-neon-blue/40" : "hover:-translate-y-1.5"
                 )}
               >
-                <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-neon-violet/15 blur-3xl transition-opacity duration-300 group-hover:opacity-100" />
+                <div aria-hidden className="feature-circuit" />
                 <div className="relative flex items-start justify-between">
                   <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-neon-blue/25 to-neon-violet/25 text-neon-cyan ring-1 ring-white/10">
                     <Icon name={u.icon} className="h-5 w-5" />

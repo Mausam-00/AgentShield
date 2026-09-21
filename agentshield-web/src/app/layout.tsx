@@ -8,6 +8,7 @@ import { CursorGlow } from "@/components/background/CursorGlow";
 import { Intro } from "@/components/intro/Intro";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import { AboutOverlay } from "@/components/ui/AboutOverlay";
+import { MotionSettings } from "@/components/ui/MotionSettings";
 import { site } from "@/lib/site";
 
 const display = Space_Grotesk({
@@ -60,14 +61,16 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${display.variable} ${sans.variable} ${mono.variable}`}>
       <body className="noise font-sans antialiased">
-        <Intro />
-        <CommandPalette />
-        <AboutOverlay />
-        <ScrollProgress />
-        <CursorGlow />
-        <Navbar />
-        <main className="relative">{children}</main>
-        <Footer />
+        <MotionSettings>
+          <Intro />
+          <CommandPalette />
+          <AboutOverlay />
+          <ScrollProgress />
+          <CursorGlow />
+          <Navbar />
+          <main className="relative">{children}</main>
+          <Footer />
+        </MotionSettings>
       </body>
     </html>
   );

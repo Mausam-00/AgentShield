@@ -1,13 +1,9 @@
 # AgentShield AI — Website
 
 A premium, enterprise-grade marketing site for **AgentShield AI**, the security
-control plane for the agentic enterprise. Dark luxury theme, glassmorphism,
-cinematic Framer Motion animations, a React Three Fiber 3D hero, animated
-particle/aurora backgrounds and 11 fully separate pages.
-
-> **Status:** Hand-authored, production-shaped codebase. It has **not** been
-> compiled in this environment because Node.js is not installed here. Follow the
-> steps below to install dependencies, run and verify.
+control plane for the agentic enterprise. A neural-security visual system with
+a shield-centred network illustration, connected gate pathway, instrument
+panels, and cinematic Framer Motion animations.
 
 ---
 
@@ -18,7 +14,8 @@ particle/aurora backgrounds and 11 fully separate pages.
 | Framework  | Next.js 14 (App Router) + React 18                  |
 | Styling    | Tailwind CSS 3.4 + custom design tokens             |
 | Animation  | Framer Motion 11                                    |
-| 3D         | Three.js + @react-three/fiber + @react-three/drei   |
+| Hero       | Depth-layered SVG network, dynamically loaded      |
+| UI tests   | Playwright, desktop and mobile Chromium            |
 | Icons      | lucide-react                                        |
 | Language   | TypeScript 5.6                                       |
 
@@ -43,6 +40,10 @@ npm run start
 
 # 5. Lint
 npm run lint
+
+# 6. Browser regression tests (Node.js 20+; production build required)
+npx playwright install chromium
+npm run test:ui
 ```
 
 ---
@@ -66,7 +67,7 @@ agentshield-web/
 │  │  ├─ layout/               # Navbar (mega-menu), MobileMenu, Footer
 │  │  ├─ sections/             # Hero, FeatureGrid, GatesShowcase, CTASection…
 │  │  ├─ background/           # ParticleField, AuroraBackground, CursorGlow…
-│  │  ├─ three/                # HeroScene (R3F) + Hero3D (ssr:false loader)
+│  │  ├─ three/                # HeroScene (layered SVG) + Hero3D (viewport-aware loader)
 │  │  └─ ui/                   # GlassCard, GradientButton, Reveal, Icon…
 │  └─ lib/
 │     ├─ site.ts               # ALL content + nav config (single source)
@@ -87,11 +88,12 @@ posts and jobs live in **`src/lib/site.ts`** — edit there to update the site.
   magenta `#f65fd0`. One dominant dark tone, neon used sparingly for emphasis.
 - **Typography** — Space Grotesk (display), Inter (body), JetBrains Mono
   (labels/mono), all via `next/font/google`.
-- **Materials** — glassmorphism (`.glass`), radial mouse-glow cards, aurora +
-  particle fields, subtle grid fade and noise overlay.
+- **Materials** — quiet instrument panels, circuit traces, asymmetric feature
+  cards, differentiated advisory/authority lanes, and restrained glass surfaces.
 - **Motion** — scroll-reveal (`Reveal`/`RevealGroup`), staggered grids, page
-  templates, animated stat counters, marquee, shimmer buttons, 3D float. All
-  respect `prefers-reduced-motion`.
+  templates, animated stat counters, marquee, shimmer buttons, and network
+  signals. Framer Motion uses the user's reduced-motion preference; the hero,
+  zipper and assessment radar also have explicit reduced-motion handling.
 - **Responsive** — mobile-first; sticky navbar collapses to an animated
   hamburger + full-screen mobile menu; grids reflow 1→2→3 columns.
 
@@ -125,6 +127,14 @@ Each inner page opens with a shared `PageHero`, composes tailored sections from
     the CLI/engine remain independently usable without the website.
 - The contact form is a client-side demo (no backend); wire it to your API/email
   provider in `components/sections/ContactForm.tsx`.
-- The 3D hero lazy-loads and is disabled during SSR for performance; it degrades
-  gracefully behind the particle/aurora backdrop.
+- The hero is decorative, not live telemetry. Its SVG network lazy-loads without
+  a WebGL context; signal animation pauses offscreen and in a hidden tab.
+- Three signature sequences are preserved: the once-per-session HUD boot,
+  the About Us zipper (including its reverse close), and the assessment radar
+  while awaiting an API response. Loader stages are illustrative, not server
+  progress. Reduced-motion users get quieter versions, not missing functionality.
+- `tests/design.spec.ts` covers those sequences, gate selection, layout overflow,
+  and assessment success/failure using explicitly synthetic API fixtures. Tests
+  do not call the Python engine or cloud providers. The runner owns a temporary
+  local production server on port 3210 and stops it on completion.
 - Replace `public/logo.png` and the content in `src/lib/site.ts` to rebrand.

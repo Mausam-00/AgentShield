@@ -8,6 +8,7 @@ import {
   motion,
   useMotionTemplate,
   useMotionValue,
+  useReducedMotion,
   useTransform,
 } from "framer-motion";
 import { site } from "@/lib/site";
@@ -155,6 +156,8 @@ export function AboutOverlay() {
   const router = useRouter();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  const reduce = useReducedMotion();
+  const dialogRef = useRef<HTMLDivElement>(null);
   const closingRef = useRef(false);
   const progress = useMotionValue(0); // 0 = zipped shut, 1 = fully open
 
@@ -183,7 +186,7 @@ export function AboutOverlay() {
     openRef.current?.stop();
     const anim = animate(progress, 0, {
       type: "tween",
-      duration: CLOSE_MS / 1000,
+      duration: reduce ? 0 : CLOSE_MS / 1000,
       ease: [0.7, 0, 0.84, 0],
       onComplete: () => {
         setMounted(false);
@@ -191,7 +194,7 @@ export function AboutOverlay() {
       },
     });
     openRef.current = anim;
-  }, [progress]);
+  }, [progress, reduce]);
 
   // "Back" returns to the landing page: navigate home (if elsewhere), scroll to
   // the top, then dismiss the overlay.
@@ -217,27 +220,45 @@ export function AboutOverlay() {
     progress.set(0);
     openRef.current = animate(progress, 1, {
       type: "tween",
-      duration: OPEN_MS / 1000,
+      duration: reduce ? 0 : OPEN_MS / 1000,
       ease: [0.45, 0.05, 0.55, 0.95],
     });
     const prev = document.body.style.overflow;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     document.body.style.overflow = "hidden";
+    dialogRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") close();
+      if (e.key === "Tab") {
+        const controls = dialogRef.current?.querySelectorAll<HTMLElement>("a[href], button:not([disabled])");
+        if (!controls?.length) return;
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (e.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = prev;
       window.removeEventListener("keydown", onKey);
       openRef.current?.stop();
+      previousFocus?.focus({ preventScroll: true });
     };
-  }, [mounted, progress, close]);
+  }, [mounted, progress, close, reduce]);
 
   if (!mounted) return null;
 
   return (
     <div
       role="dialog"
+      ref={dialogRef}
+      tabIndex={-1}
       aria-modal="true"
       aria-label="About AgentShield AI"
       className="fixed inset-0 z-[100] overflow-hidden"
@@ -435,14 +456,15 @@ export function AboutOverlay() {
       <motion.div
         aria-hidden
         style={{ clipPath: clipLeft, x: leftX }}
-        className="pointer-events-none absolute inset-y-0 left-0 w-1/2 bg-[linear-gradient(90deg,#080d18_0%,#0d1526_82%,#111b30_100%)]"
+        data-testid="zip-curtain"
+        className="zip-panel pointer-events-none absolute inset-y-0 left-0 w-1/2 bg-[linear-gradient(90deg,#080d18_0%,#0d1526_82%,#111b30_100%)]"
       >
         <Teeth side="right" />
       </motion.div>
       <motion.div
         aria-hidden
         style={{ clipPath: clipRight, x: rightX }}
-        className="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-[linear-gradient(270deg,#080d18_0%,#0d1526_82%,#111b30_100%)]"
+        className="zip-panel pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-[linear-gradient(270deg,#080d18_0%,#0d1526_82%,#111b30_100%)]"
       >
         <Teeth side="left" />
       </motion.div>
@@ -460,8 +482,10 @@ export function AboutOverlay() {
         style={{ top: sliderTop, opacity: sliderOpacity }}
         className="pointer-events-none absolute left-1/2 z-[30] -translate-x-1/2 -translate-y-1/2"
       >
-        <div className="relative flex flex-col items-center">
-          <div className="h-8 w-11 rounded-md bg-[linear-gradient(180deg,#e8edf6,#aab6c8_60%,#7c88aa)] shadow-[0_2px_10px_rgba(0,0,0,0.5)] ring-1 ring-white/40" />
+        <div className="zip-pull relative flex flex-col items-center">
+          <div className="grid h-8 w-11 place-items-center rounded-md bg-[linear-gradient(180deg,#e8edf6,#aab6c8_60%,#7c88aa)] shadow-[0_2px_10px_rgba(0,0,0,0.5)] ring-1 ring-white/40">
+            <Icon name="Lock" className="h-4 w-4 text-ink-900" />
+          </div>
           <div className="-mt-1 h-3 w-3 rounded-full bg-[#8b98ad] ring-1 ring-white/30" />
           <div className="mt-0.5 h-6 w-2 rounded-full bg-[linear-gradient(180deg,#cfd7e4,#8a97ab)] shadow-[0_2px_8px_rgba(0,0,0,0.55)]" />
         </div>

@@ -166,15 +166,24 @@ export function AssessConsole() {
         subtitle="Drop a custom-agent .md file. AgentShield runs the real engine — static assessment, OBSERVE, Gate R red-team, and a Responsible AI read — and hands back a downloadable, self-contained HTML report. Nothing is executed against a target."
       />
 
-      <div className="mt-16 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+      <div className="assessment-workspace mt-16 grid gap-5 rounded-2xl p-2 sm:p-4 xl:grid-cols-[0.8fr_1.2fr]">
         {/* Upload panel */}
-        <div className="rounded-2xl glass p-6">
+        <div className="rounded-xl border border-white/10 bg-ink-900 p-5 sm:p-6">
           <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-white">
             <Icon name="Upload" className="h-4 w-4 text-neon-cyan" />
             Upload an agent .md
           </div>
 
           <div
+            role="button"
+            tabIndex={0}
+            aria-label="Upload an agent definition"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                inputRef.current?.click();
+              }
+            }}
             onDragOver={(e) => {
               e.preventDefault();
               setDragging(true);
@@ -187,7 +196,7 @@ export function AssessConsole() {
             }}
             onClick={() => inputRef.current?.click()}
             className={cn(
-              "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-8 text-center transition-colors",
+              "upload-target flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed p-8 text-center transition-colors",
               dragging ? "border-neon-blue/60 bg-white/[0.05]" : "border-white/12 bg-white/[0.02] hover:border-white/25"
             )}
           >
@@ -229,7 +238,7 @@ export function AssessConsole() {
         </div>
 
         {/* Result panel */}
-        <div className="relative flex flex-col overflow-hidden rounded-2xl glass-strong p-6">
+        <div className="relative flex min-w-0 flex-col overflow-hidden rounded-xl glass-strong p-5 sm:p-6">
           <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-neon-violet/15 blur-3xl" />
 
           <div className="relative flex items-center justify-between">
@@ -298,7 +307,7 @@ export function AssessConsole() {
                   </div>
 
                   {/* Hero: assurance score + runtime decision */}
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3 md:grid-cols-2">
                     <div className="flex items-center gap-4 rounded-xl border border-white/8 bg-white/[0.02] p-4">
                       <ScoreRing score={summary.assurance_score} posture={summary.assurance_posture} />
                       <div className="min-w-0">
@@ -347,7 +356,7 @@ export function AssessConsole() {
                   </div>
 
                   {/* Secondary signals */}
-                  <div className="grid grid-cols-2 gap-2.5">
+                  <div className="grid gap-2.5 sm:grid-cols-2">
                     <PosturePill label="Red-team" value={summary.redteam_posture} />
                     <PosturePill label="Responsible AI" value={summary.rai_posture} />
                     <div className="flex items-center justify-between gap-3 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2">

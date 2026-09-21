@@ -82,6 +82,9 @@ export function HudIntro() {
     setShow(true);
     document.documentElement.style.overflow = "hidden";
     const scheduled = timers.current;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" || e.key === "Enter" || e.key === " ") finish();
+    };
 
     if (reduce) {
       setRevealed(TELEMETRY.length);
@@ -97,19 +100,13 @@ export function HudIntro() {
         schedule(() => setResolved(i + 1), 200 + i * 170 + 120);
       });
       schedule(handleAssembled, ASSEMBLE_MS);
-      const onKey = (e: KeyboardEvent) => {
-        if (e.key === "Escape" || e.key === "Enter" || e.key === " ") finish();
-      };
       window.addEventListener("keydown", onKey);
-      scheduled.push(
-        setTimeout(() => window.removeEventListener("keydown", onKey), 7000) as unknown as ReturnType<
-          typeof setTimeout
-        >
-      );
+      scheduled.push(setTimeout(() => window.removeEventListener("keydown", onKey), 7000));
     }
 
     return () => {
       scheduled.forEach(clearTimeout);
+      window.removeEventListener("keydown", onKey);
       document.documentElement.style.overflow = "";
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -129,7 +126,8 @@ export function HudIntro() {
         <motion.div
           key="hud-intro"
           onClick={finish}
-          className="fixed inset-0 z-[100] flex cursor-pointer items-center justify-center overflow-hidden bg-ink-950"
+          data-testid="boot-intro"
+          className="signature-intro fixed inset-0 z-[100] flex cursor-pointer items-center justify-center overflow-hidden bg-ink-950"
           initial={{ opacity: 1 }}
           exit={{ opacity: 0, filter: "blur(8px)" }}
           transition={{ duration: 0.6, ease: [0.7, 0, 0.84, 0] }}
@@ -167,7 +165,7 @@ export function HudIntro() {
 
           {/* HUD core */}
           <motion.div
-            className="relative"
+            className="boot-core relative"
             style={{ width: "min(84vmin, 520px)", height: "min(84vmin, 520px)" }}
             exit={{ scale: 0.7, opacity: 0 }}
             transition={{ duration: 0.6, ease: [0.7, 0, 0.84, 0] }}
@@ -222,7 +220,7 @@ export function HudIntro() {
               <circle cx="200" cy="200" r="100" fill="none" stroke="currentColor" strokeOpacity="0.35" strokeWidth="1" />
 
               {/* Orbiting labels */}
-              {LABELS.map((l) => {
+              {LABELS.map((l, i) => {
                 const p = labelPos(l.a, 178);
                 return (
                   <motion.text
@@ -232,8 +230,8 @@ export function HudIntro() {
                     className="fill-white/45 font-mono"
                     style={{ fontSize: 8, letterSpacing: 1 }}
                     initial={{ opacity: 0 }}
-                    animate={{ opacity: [0, 0.7, 0.4, 0.7] }}
-                    transition={{ duration: 2.2, repeat: Infinity, delay: Math.random() }}
+                    animate={{ opacity: reduce ? .7 : [0, 0.7, 0.4, 0.7] }}
+                    transition={{ duration: reduce ? 0 : 2.2, repeat: reduce ? 0 : Infinity, delay: i * .15 }}
                   >
                     {l.t}
                   </motion.text>
@@ -351,7 +349,7 @@ export function HudIntro() {
               aria-hidden
               className="pointer-events-none absolute inset-0 bg-white"
               initial={{ opacity: 0 }}
-              animate={{ opacity: [0, 0.35, 0] }}
+              animate={{ opacity: [0, 0.12, 0] }}
               transition={{ duration: 0.22, times: [0, 0.4, 1] }}
             />
           )}

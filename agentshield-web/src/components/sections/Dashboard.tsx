@@ -32,7 +32,7 @@ function MetricBar({
   const afterPct = Math.max(6, Math.round((after / before) * 100));
 
   return (
-    <div className="rounded-2xl glass p-6">
+    <div className="instrument-panel rounded-2xl p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="text-sm font-medium text-white/70">{label}</div>

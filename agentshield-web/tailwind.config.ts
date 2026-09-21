@@ -8,6 +8,10 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      opacity: {
+        8: "0.08",
+        12: "0.12",
+      },
       colors: {
         ink: {
           950: "#04060d",

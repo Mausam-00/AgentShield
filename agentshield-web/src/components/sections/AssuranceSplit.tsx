@@ -29,9 +29,9 @@ export function AssuranceSplit() {
         subtitle="An assurance PASS is never a certification, and a model never grants access. This separation is the core of the platform."
       />
 
-      <div className="mt-16 grid gap-5 lg:grid-cols-2">
+      <div className="trust-lanes relative mt-16 grid gap-8 lg:grid-cols-2">
         <Reveal>
-          <div className="h-full rounded-2xl glass p-8 ring-1 ring-neon-blue/20">
+          <div className="trust-lane trust-advisory h-full rounded-2xl p-8">
             <div className="flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-neon-blue/15 text-neon-blue">
                 <Icon name="Sparkles" className="h-5 w-5" />
@@ -52,7 +52,7 @@ export function AssuranceSplit() {
         </Reveal>
 
         <Reveal delay={0.1}>
-          <div className="h-full rounded-2xl glass p-8 ring-1 ring-neon-teal/20">
+          <div className="trust-lane trust-authority h-full rounded-2xl p-8">
             <div className="flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-neon-teal/15 text-neon-teal">
                 <Icon name="Lock" className="h-5 w-5" />

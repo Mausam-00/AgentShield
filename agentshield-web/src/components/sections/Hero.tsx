@@ -1,10 +1,9 @@
 "use client";
 
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { useRef } from "react";
 import { Hero3D } from "@/components/three/Hero3D";
 import { AuroraBackground } from "@/components/background/AuroraBackground";
-import { ParticleField } from "@/components/background/ParticleField";
 import { GradientButton } from "@/components/ui/GradientButton";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { Pill } from "@/components/ui/Pill";
@@ -16,31 +15,28 @@ const line2 = ["autonomous", "action."];
 
 export function Hero() {
   const ref = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ["start start", "end start"],
   });
-  const yText = useTransform(scrollYProgress, [0, 1], [0, 140]);
-  const yScene = useTransform(scrollYProgress, [0, 1], [0, 220]);
-  const opacity = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
+  const yText = useTransform(scrollYProgress, [0, 1], [0, 30]);
+  const yScene = useTransform(scrollYProgress, [0, 1], [0, 50]);
 
   return (
     <section
       ref={ref}
-      className="relative flex min-h-[100svh] items-center overflow-hidden pt-28"
+      className="hero-command relative flex min-h-[100svh] items-center overflow-hidden pb-24 pt-32"
     >
       <AuroraBackground />
-      <motion.div style={{ y: yScene }} className="absolute inset-0">
-        <Hero3D />
-      </motion.div>
-      <ParticleField className="opacity-70" />
+      <div aria-hidden className="circuit-grid pointer-events-none absolute inset-0" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-ink-950 to-transparent" />
 
       <motion.div
-        style={{ y: yText, opacity }}
-        className="container-x relative z-10"
+        style={reduce ? undefined : { y: yText }}
+        className="container-x relative z-10 grid items-center gap-6 lg:grid-cols-[1.08fr_1fr]"
       >
-        <div className="max-w-4xl">
+        <div className="relative z-10 min-w-0">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -49,7 +45,7 @@ export function Hero() {
             <Pill>The Security Control Plane for the Agentic Enterprise</Pill>
           </motion.div>
 
-          <h1 className="mt-7 font-display text-5xl font-semibold leading-[0.98] tracking-tight text-white sm:text-7xl lg:text-8xl">
+          <h1 className="mt-7 font-display text-[clamp(2.65rem,5.4vw,4.6rem)] font-semibold leading-[1.06] tracking-tight text-white">
             <span className="block overflow-hidden">
               {line1.map((w, i) => (
                 <motion.span
@@ -113,7 +109,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, delay: 0.85 }}
-            className="mt-14 grid max-w-2xl grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-4"
+            className="hero-stats mt-12 grid max-w-2xl grid-cols-2 gap-x-6 gap-y-6 border-t border-white/10 pt-7 sm:grid-cols-4"
           >
             {heroStats.map((s) => (
               <div key={s.label}>
@@ -131,6 +127,15 @@ export function Hero() {
             ))}
           </motion.div>
         </div>
+        <motion.div
+          style={reduce ? undefined : { y: yScene }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1.2 }}
+          className="relative mx-auto w-full max-w-[620px] lg:-mr-10 lg:w-[112%]"
+        >
+          <Hero3D />
+        </motion.div>
       </motion.div>
 
       <motion.div
@@ -141,8 +146,8 @@ export function Hero() {
       >
         <div className="flex h-10 w-6 items-start justify-center rounded-full border border-white/20 p-1.5">
           <motion.div
-            animate={{ y: [0, 12, 0] }}
-            transition={{ duration: 1.6, repeat: Infinity }}
+            animate={{ y: reduce ? 0 : [0, 12, 0] }}
+            transition={{ duration: 1.6, repeat: reduce ? 0 : Infinity }}
             className="h-2 w-1 rounded-full bg-neon-cyan"
           />
         </div>

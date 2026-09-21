@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Icon } from "@/components/ui/Icon";
 import { cn } from "@/lib/utils";
 
@@ -22,16 +22,25 @@ const STAGES = [
 
 export function AssessProcessing() {
   const [i, setI] = useState(0);
+  const reduce = useReducedMotion();
 
   useEffect(() => {
+    if (reduce) return;
     const t = setInterval(() => setI((n) => (n + 1) % STAGES.length), 900);
     return () => clearInterval(t);
-  }, []);
+  }, [reduce]);
 
   return (
-    <div className="flex h-[300px] flex-col items-center justify-center gap-6 overflow-hidden rounded-xl border border-white/10 bg-white/[0.015] px-6">
+    <div role="status" aria-label="Assessment in progress" className="processing-chamber flex min-h-[360px] flex-col items-center justify-center gap-5 overflow-hidden rounded-xl border border-white/10 px-4 py-8">
+      <span className="sr-only">Waiting for the assessment response.</span>
+      <div aria-hidden="true" className="flex w-full flex-col items-center gap-5">
       {/* Radar / shield core */}
       <div className="relative grid h-28 w-28 place-items-center">
+        <span className="processing-guide absolute -inset-5 rounded-full" />
+        {Array.from({ length: 8 }, (_, n) => (
+          <span key={n} className="processing-node absolute left-1/2 top-1/2 h-2 w-2 rounded-sm"
+            style={{ transform: `translate(-50%, -50%) rotate(${n * 45}deg) translateY(-76px) rotate(${-n * 45}deg)` }} />
+        ))}
         {/* Rotating conic "radar" sweep, masked into a thin ring. */}
         <motion.span
           aria-hidden
@@ -43,12 +52,12 @@ export function AssessProcessing() {
               "radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))",
             mask: "radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))",
           }}
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1.6, ease: "linear", repeat: Infinity }}
+          animate={{ rotate: reduce ? 0 : 360 }}
+          transition={{ duration: 1.6, ease: "linear", repeat: reduce ? 0 : Infinity }}
         />
 
         {/* Expanding pulse rings. */}
-        {[0, 1].map((r) => (
+        {!reduce && [0, 1].map((r) => (
           <motion.span
             key={r}
             aria-hidden
@@ -65,18 +74,18 @@ export function AssessProcessing() {
         {/* Breathing shield. */}
         <motion.span
           className="relative grid h-12 w-12 place-items-center rounded-full bg-[linear-gradient(135deg,#4f7cff,#a855f7)] shadow-glow"
-          animate={{ scale: [1, 1.09, 1] }}
-          transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+          animate={{ scale: reduce ? 1 : [1, 1.09, 1] }}
+          transition={{ duration: 1.4, repeat: reduce ? 0 : Infinity, ease: "easeInOut" }}
         >
           <Icon name="ShieldCheck" className="h-6 w-6 text-white" />
         </motion.span>
       </div>
 
       {/* Cycling stage label. */}
-      <div className="flex h-5 items-center overflow-hidden text-center">
+      <div className="mt-4 flex min-h-10 items-center text-center">
         <motion.span
           key={i}
-          initial={{ y: 14, opacity: 0 }}
+          initial={{ y: reduce ? 0 : 14, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
           className="text-sm font-medium text-white/85"
@@ -103,10 +112,14 @@ export function AssessProcessing() {
         <motion.span
           aria-hidden
           className="absolute inset-y-0 w-1/3 rounded-full bg-[linear-gradient(90deg,transparent,#38e1ff,#a855f7,transparent)]"
-          animate={{ x: ["-70%", "230%"] }}
-          transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+          animate={{ x: reduce ? "100%" : ["-70%", "230%"] }}
+          transition={{ duration: 1.2, repeat: reduce ? 0 : Infinity, ease: "easeInOut" }}
         />
       </div>
+      </div>
+      <p className="text-center text-[11px] leading-relaxed text-white/55">
+        Illustrative stages — awaiting engine response, not live progress.
+      </p>
     </div>
   );
 }
