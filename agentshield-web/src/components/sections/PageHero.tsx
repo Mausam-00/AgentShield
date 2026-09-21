@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion";
 import { AuroraBackground } from "@/components/background/AuroraBackground";
-import { ParticleField } from "@/components/background/ParticleField";
 import { Pill } from "@/components/ui/Pill";
 import type { ReactNode } from "react";
 
@@ -18,7 +17,6 @@ export function PageHero({
   return (
     <section className="relative overflow-hidden pb-16 pt-40 sm:pt-48">
       <AuroraBackground />
-      <ParticleField className="opacity-50" density={0.00006} />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-ink-950 to-transparent" />
       <div className="container-x relative z-10">
         <motion.div

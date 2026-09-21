@@ -6,6 +6,7 @@ import { Icon } from "@/components/ui/Icon";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { gates } from "@/lib/site";
 import { cn } from "@/lib/utils";
+import { SecurityVisual } from "@/components/three/SecurityVisual";
 
 export function GatesShowcase() {
   const [active, setActive] = useState(4); // G4 highlighted by default
@@ -14,7 +15,9 @@ export function GatesShowcase() {
 
   return (
     <section className="container-x section-chapter py-24 sm:py-32">
+      <div className="grid items-center gap-4 lg:grid-cols-[1.3fr_0.7fr]">
       <SectionHeading
+        align="left"
         eyebrow="How it works"
         title={
           <>
@@ -24,6 +27,10 @@ export function GatesShowcase() {
         }
         subtitle="Every action flows through the gates in order. Only gate four — deterministic policy — can authorize."
       />
+        <div className="section-visual mx-auto w-full max-w-[360px]">
+          <SecurityVisual variant="gates" activeIndex={active} />
+        </div>
+      </div>
 
       <div className="gate-workspace mt-14 rounded-2xl p-5 sm:p-8">
         <ol className="gate-pathway">

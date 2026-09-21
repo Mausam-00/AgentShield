@@ -21,9 +21,9 @@ async function uploadFixture(page: Page) {
 }
 
 async function revealNeuralScene(page: Page) {
-  await page.locator(".neural-viewport").scrollIntoViewIfNeeded();
+  await page.locator('.neural-viewport[data-variant="shield"]').scrollIntoViewIfNeeded();
   await expect(page.locator(".neural-scene")).toBeVisible();
-  await expect(page.locator(".neural-viewport")).toHaveAttribute("data-active", "true");
+  await expect(page.locator('.neural-viewport[data-variant="shield"]')).toHaveAttribute("data-active", "true");
 }
 
 test("opening sequence plays, is skippable and retains its session behavior", async ({ page }) => {
@@ -52,7 +52,7 @@ test("neural hero, gate pathway and original content work without horizontal ove
     await expect(page.locator("#gate-detail")).toHaveAttribute("aria-labelledby", `gate-G${i}`);
     await expect(page.locator("#gate-detail")).toContainText(`G${i}`);
   }
-  await expect(page.locator(".neural-viewport")).toHaveAttribute("data-active", "false");
+  await expect(page.locator('.neural-viewport[data-variant="shield"]')).toHaveAttribute("data-active", "false");
   await expect(page.locator(".feature-panel")).toHaveCount(6);
   await expect(page.locator(".trust-lane")).toHaveCount(2);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

@@ -9,6 +9,7 @@ import { Intro } from "@/components/intro/Intro";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import { AboutOverlay } from "@/components/ui/AboutOverlay";
 import { MotionSettings } from "@/components/ui/MotionSettings";
+import { ParticleField } from "@/components/background/ParticleField";
 import { site } from "@/lib/site";
 
 const display = Space_Grotesk({
@@ -62,6 +63,9 @@ export default function RootLayout({
     <html lang="en" className={`${display.variable} ${sans.variable} ${mono.variable}`}>
       <body className="noise font-sans antialiased">
         <MotionSettings>
+          <div aria-hidden className="ambient-network">
+            <ParticleField />
+          </div>
           <Intro />
           <CommandPalette />
           <AboutOverlay />

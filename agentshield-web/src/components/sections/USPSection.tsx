@@ -7,13 +7,16 @@ import { Icon } from "@/components/ui/Icon";
 import { RevealGroup, RevealItem } from "@/components/ui/Reveal";
 import { usps } from "@/lib/site";
 import { cn } from "@/lib/utils";
+import { SecurityVisual } from "@/components/three/SecurityVisual";
 
 export function USPSection() {
   const [open, setOpen] = useState<number | null>(null);
 
   return (
     <section id="usp" className="container-x py-24 sm:py-32">
+      <div className="grid items-center gap-4 lg:grid-cols-[1.3fr_0.7fr]">
       <SectionHeading
+        align="left"
         eyebrow="Why AgentShield"
         title={
           <>
@@ -23,6 +26,10 @@ export function USPSection() {
         }
         subtitle="Six differentiators that separate a demonstrable safety envelope from a best-effort guardrail. Click any card for more."
       />
+        <div className="section-visual mx-auto w-full max-w-[360px]">
+          <SecurityVisual variant="capabilities" activeIndex={open ?? -1} />
+        </div>
+      </div>
 
       <RevealGroup className="usp-grid mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {usps.map((u, i) => {

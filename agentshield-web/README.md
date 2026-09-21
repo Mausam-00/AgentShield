@@ -14,7 +14,7 @@ panels, and cinematic Framer Motion animations.
 | Framework  | Next.js 14 (App Router) + React 18                  |
 | Styling    | Tailwind CSS 3.4 + custom design tokens             |
 | Animation  | Framer Motion 11                                    |
-| Hero       | Depth-layered SVG network, dynamically loaded      |
+| Graphics   | Three.js / React Three Fiber scenes with SVG fallbacks |
 | UI tests   | Playwright, desktop and mobile Chromium            |
 | Icons      | lucide-react                                        |
 | Language   | TypeScript 5.6                                       |
@@ -67,7 +67,7 @@ agentshield-web/
 │  │  ├─ layout/               # Navbar (mega-menu), MobileMenu, Footer
 │  │  ├─ sections/             # Hero, FeatureGrid, GatesShowcase, CTASection…
 │  │  ├─ background/           # ParticleField, AuroraBackground, CursorGlow…
-│  │  ├─ three/                # HeroScene (layered SVG) + Hero3D (viewport-aware loader)
+│  │  ├─ three/                # SecurityVisual loader, WebGL scenes + SVG fallbacks
 │  │  └─ ui/                   # GlassCard, GradientButton, Reveal, Icon…
 │  └─ lib/
 │     ├─ site.ts               # ALL content + nav config (single source)
@@ -127,13 +127,30 @@ Each inner page opens with a shared `PageHero`, composes tailored sections from
     the CLI/engine remain independently usable without the website.
 - The contact form is a client-side demo (no backend); wire it to your API/email
   provider in `components/sections/ContactForm.tsx`.
-- The hero is decorative, not live telemetry. Its SVG network lazy-loads without
-  a WebGL context; signal animation pauses offscreen and in a hidden tab.
+- Graphics are decorative, not live telemetry. Desktop fine-pointer devices
+  progressively load a real WebGL shield, a rotating six-node control network
+  beside the differentiators, and a gate corridor beside the workflow. The
+  latter two reflect card/gate selection without affecting engine decisions.
+  Mobile, reduced-motion, unsupported WebGL, and context-loss cases use SVG
+  fallbacks. WebGL loops pause offscreen and in hidden tabs; pixel ratio is
+  capped at 1.5. A single bounded, 30fps canvas network sits behind all pages,
+  pauses in hidden tabs, and becomes static for reduced-motion users.
+- The efficiency dashboard replays the existing recorded benchmark in three
+  illustrative stages, with interpolated counters and bars. This is explicitly
+  not a live engine run: there are no API calls, new measurements, or fabricated
+  results. It runs once on entry, offers pause/resume/replay, pauses offscreen
+  and in hidden tabs, and displays the final values immediately for reduced
+  motion. The existing benchmark values, caveats, and expandable details remain.
+- The closing call to action has a lightweight SVG security perimeter with
+  agent chips, a locked shield, and an audit-record motif. Decorative signal
+  paths pause offscreen/in hidden tabs and stop for reduced-motion users. This
+  does not create a connector or represent a running agent workflow.
 - Three signature sequences are preserved: the once-per-session HUD boot,
   the About Us zipper (including its reverse close), and the assessment radar
   while awaiting an API response. Loader stages are illustrative, not server
   progress. Reduced-motion users get quieter versions, not missing functionality.
-- `tests/design.spec.ts` covers those sequences, gate selection, layout overflow,
+- Browser tests cover those sequences, rendering modes, animation lifecycle,
+  benchmark replay, gate selection, layout overflow,
   and assessment success/failure using explicitly synthetic API fixtures. Tests
   do not call the Python engine or cloud providers. The runner owns a temporary
   local production server on port 3210 and stops it on completion.

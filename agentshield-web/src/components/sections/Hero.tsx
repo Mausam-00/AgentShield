@@ -2,7 +2,7 @@
 
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { useRef } from "react";
-import { Hero3D } from "@/components/three/Hero3D";
+import { SecurityVisual } from "@/components/three/SecurityVisual";
 import { AuroraBackground } from "@/components/background/AuroraBackground";
 import { GradientButton } from "@/components/ui/GradientButton";
 import { CopyButton } from "@/components/ui/CopyButton";
@@ -134,7 +134,7 @@ export function Hero() {
           transition={{ duration: 1.2 }}
           className="relative mx-auto w-full max-w-[620px] lg:-mr-10 lg:w-[112%]"
         >
-          <Hero3D />
+          <SecurityVisual />
         </motion.div>
       </motion.div>
 

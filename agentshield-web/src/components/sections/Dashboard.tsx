@@ -1,16 +1,79 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence, useInView } from "framer-motion";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { Icon } from "@/components/ui/Icon";
 import { Reveal } from "@/components/ui/Reveal";
-import { viewportOnce } from "@/lib/motion";
 import { dashboard } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 function fmt(n: number) {
   return n.toLocaleString("en-US");
+}
+
+const REPLAY_MS = 6000;
+
+function useBenchmarkReplay() {
+  const ref = useRef<HTMLDivElement>(null);
+  const visible = useInView(ref, { amount: .12 });
+  const [reduce, setReduce] = useState(false);
+  const elapsed = useRef(0);
+  const [progress, setProgress] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const complete = progress >= 1;
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReduce(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    const update = () => setHidden(document.hidden);
+    update();
+    document.addEventListener("visibilitychange", update);
+    return () => document.removeEventListener("visibilitychange", update);
+  }, []);
+
+  useEffect(() => {
+    if (reduce) {
+      elapsed.current = REPLAY_MS;
+      setProgress(1);
+    }
+  }, [reduce]);
+
+  useEffect(() => {
+    if (!visible || hidden || reduce || paused || complete) return;
+    let previous = performance.now();
+    let raf = 0;
+    const frame = (now: number) => {
+      elapsed.current = Math.min(REPLAY_MS, elapsed.current + Math.min(now - previous, 100));
+      previous = now;
+      setProgress(elapsed.current / REPLAY_MS);
+      if (elapsed.current < REPLAY_MS) raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, [visible, hidden, reduce, paused, complete]);
+
+  return {
+    ref,
+    progress: reduce ? 1 : progress,
+    running: visible && !hidden && !reduce && !paused && !complete,
+    paused,
+    reduced: !!reduce,
+    toggle: () => {
+      if (complete) {
+        elapsed.current = 0;
+        setProgress(0);
+        setPaused(false);
+      } else setPaused(value => !value);
+    },
+  };
 }
 
 function MetricBar({
@@ -20,6 +83,7 @@ function MetricBar({
   unit,
   change,
   detail,
+  progress,
 }: {
   label: string;
   before: number;
@@ -27,17 +91,23 @@ function MetricBar({
   unit: string;
   change: string;
   detail: string;
+  progress: number;
 }) {
   const [open, setOpen] = useState(false);
   const afterPct = Math.max(6, Math.round((after / before) * 100));
+  const baseline = Math.min(1, progress / .25);
+  const optimized = Math.max(0, Math.min(1, (progress - .25) / .6));
+  const value = Math.round(before + (after - before) * optimized);
 
   return (
-    <div className="instrument-panel rounded-2xl p-6">
+    <div className="instrument-panel benchmark-metric relative overflow-hidden rounded-2xl p-6">
+      {progress > 0 && progress < 1 && <span aria-hidden className="benchmark-scan" style={{ left: `${progress * 100}%` }} />}
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="text-sm font-medium text-white/70">{label}</div>
           <div className="mt-1 font-display text-2xl font-semibold text-white">
-            {fmt(after)}
+            <span className="sr-only">{fmt(after)}</span>
+            <span aria-hidden data-testid="replay-value" className="tabular-nums">{fmt(value)}</span>
             <span className="text-base text-white/40">{unit}</span>
           </div>
         </div>
@@ -56,12 +126,10 @@ function MetricBar({
             </span>
           </div>
           <div className="h-2.5 overflow-hidden rounded-full bg-white/8">
-            <motion.div
+            <div
               className="h-full rounded-full bg-gradient-to-r from-rose-500 to-orange-400"
-              initial={{ width: "8%" }}
-              whileInView={{ width: "100%" }}
-              viewport={viewportOnce}
-              transition={{ duration: 1.3, ease: [0.16, 1, 0.3, 1] }}
+              data-testid="baseline-bar"
+              style={{ width: `${baseline * 100}%` }}
             />
           </div>
         </div>
@@ -74,12 +142,10 @@ function MetricBar({
             </span>
           </div>
           <div className="h-2.5 overflow-hidden rounded-full bg-white/8">
-            <motion.div
+            <div
               className="h-full rounded-full bg-gradient-to-r from-neon-teal to-neon-cyan"
-              initial={{ width: "8%" }}
-              whileInView={{ width: `${afterPct}%` }}
-              viewport={viewportOnce}
-              transition={{ duration: 1.3, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              data-testid="optimized-bar"
+              style={{ width: `${baseline * (100 + (afterPct - 100) * optimized)}%` }}
             />
           </div>
         </div>
@@ -112,6 +178,8 @@ function MetricBar({
 
 export function Dashboard() {
   const [openSaving, setOpenSaving] = useState<number | null>(0);
+  const replay = useBenchmarkReplay();
+  const phase = replay.progress < .25 ? 0 : replay.progress < .85 ? 1 : 2;
 
   return (
     <section id="dashboard" className="container-x scroll-mt-28 py-24 sm:py-32">
@@ -126,17 +194,39 @@ export function Dashboard() {
         subtitle="A non-invasive optimization layer measured across a 12-task governance workload. The engine is byte-identical — every decision was re-verified against the recorded baseline."
       />
 
-      <div className="mt-16 grid gap-5 lg:grid-cols-[1.15fr_1fr]">
+      <div ref={replay.ref} className="benchmark-replay mt-12 grid gap-5 lg:grid-cols-[1.15fr_1fr]" data-running={replay.running} data-complete={replay.progress === 1}>
+        <div className="instrument-panel rounded-2xl p-5 lg:col-span-2">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <p className="text-xs leading-relaxed text-white/60">
+              Recorded benchmark replay — illustrative animation, not a live engine run.
+            </p>
+            <button onClick={replay.toggle} disabled={replay.reduced}
+              className="rounded-lg border border-neon-cyan/30 px-4 py-2 text-xs font-medium text-neon-cyan hover:bg-neon-cyan/10 disabled:cursor-default disabled:opacity-50">
+              {replay.reduced ? "Recorded results" : replay.progress === 1 ? "Replay benchmark" : replay.paused ? "Resume replay" : "Pause replay"}
+            </button>
+          </div>
+          <ol className="mt-5 grid grid-cols-3 gap-3 text-[11px] sm:text-xs" aria-label="Benchmark replay stages">
+            {["Recorded baseline", "Optimization replay", "Preserved results"].map((label, i) => (
+              <li key={label} aria-current={phase === i ? "step" : undefined}
+                className={cn("border-t-2 pt-3 transition-colors", i <= phase ? "border-neon-cyan text-neon-cyan" : "border-white/10 text-white/40")}>
+                <span className="mr-2 font-mono opacity-60">0{i + 1}</span>{label}
+              </li>
+            ))}
+          </ol>
+          <div aria-hidden className="mt-4 h-0.5 overflow-hidden rounded bg-white/8">
+            <div className="h-full bg-neon-cyan" style={{ width: `${replay.progress * 100}%` }} />
+          </div>
+        </div>
         {/* Left: metric bars + preserved */}
         <div className="grid gap-5">
           <div className="grid gap-5 sm:grid-cols-2">
             {dashboard.metrics.map((m) => (
-              <MetricBar key={m.label} {...m} />
+              <MetricBar key={m.label} {...m} progress={replay.progress} />
             ))}
           </div>
 
           <Reveal>
-            <div className="rounded-2xl glass-strong p-6">
+            <div className="benchmark-preserved rounded-2xl glass-strong p-6" data-highlighted={phase === 2}>
               <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-white">
                 <Icon name="ShieldCheck" className="h-4 w-4 text-neon-teal" />
                 Preserved — unchanged after optimization
